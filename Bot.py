@@ -1,44 +1,67 @@
 import discord
+from discord.ext import commands
 import SECRETS
 
-game = discord.Game("ur sus")
-client = discord.Client(activity=game)
+bot = commands.Bot(command_prefix=">", activity=discord.Game("ur sus"))
 
 
-@client.event
+MUTE = False
+
+
+@bot.event
 async def on_ready():
-    print('Logged in as {0.user}'.format(client))
+    print('Logged in as {0.user}'.format(bot))
 
 
-@client.event
-async def on_message(message):
-    if message.author == client.user:
-        return
-
-    if message.content.startswith(">info"):
-        output = ""
-        if message.author.voice and message.author.voice.channel:
-            channel = message.author.voice.channel
-            output += "{0} is connected to channel {1} (id: {2})\n".format(str(message.author), str(channel),
-                                                                           str(channel.id))
-            voice_members = channel.members
-            output += "Connected are:"
-            for member in voice_members:
-                output += "\n" + str(member)
-        await message.channel.send(output)
-        print(output)
-
-    elif message.content.startswith(">mute"):
-        if message.author.voice and message.author.voice.channel:
-            channel = message.author.voice.channel
-            for member in channel.members:
+@bot.event
+async def on_voice_state_update(member, before, after):
+    print("Voice state update")
+    if after is not None and before.channel is not after.channel:
+        if str(after.channel) == "Tote":
+            await member.edit(mute=False)
+        elif str(after.channel) == "Crew":
+            if MUTE:
                 await member.edit(mute=True)
-
-    elif message.content.startswith(">unmute"):
-        if message.author.voice and message.author.voice.channel:
-            channel = message.author.voice.channel
-            for member in channel.members:
+            else:
                 await member.edit(mute=False)
 
 
-client.run(SECRETS.TOKEN)
+
+@bot.command()
+async def info(ctx):
+    output = ""
+    if ctx.message.author.voice and ctx.message.author.voice.channel:
+        channel = ctx.message.author.voice.channel
+        output += "{0} is connected to channel {1} (id: {2})\n".format(str(ctx.message.author), str(channel),
+                                                                       str(channel.id))
+        voice_members = channel.members
+        output += "Connected are:"
+        for member in voice_members:
+            output += "\n" + str(member)
+    await ctx.send(output)
+    print(output)
+
+
+@bot.command()
+@commands.has_role("Mute Master")
+async def mute(ctx):
+    global MUTE
+    if ctx.message.author.voice and ctx.message.author.voice.channel:
+        channel = ctx.message.author.voice.channel
+        for member in channel.members:
+            await member.edit(mute=True)
+            MUTE = True
+
+
+@bot.command()
+@commands.has_role("Mute Master")
+async def unmute(ctx):
+    global MUTE
+    if ctx.message.author.voice and ctx.message.author.voice.channel:
+        channel = ctx.message.author.voice.channel
+        for member in channel.members:
+            await member.edit(mute=False)
+            MUTE = False
+
+
+bot.run(SECRETS.TOKEN)
