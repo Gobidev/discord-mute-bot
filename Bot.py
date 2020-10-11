@@ -15,7 +15,8 @@ async def on_ready():
 
 @bot.event
 async def on_voice_state_update(member, before, after):
-    print("Voice state update")
+    if before.channel is not after.channel:
+        print("Voice state update: {0} from {1} to {2}".format(member, before.channel, after.channel))
     if after is not None and before.channel is not after.channel:
         if str(after.channel) == "Tote":
             await member.edit(mute=False)
