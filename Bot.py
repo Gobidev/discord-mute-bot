@@ -32,7 +32,7 @@ async def on_message(message):
                                                                 message.channel.guild))
     if message.author == bot.user:
         if message.content.startswith("-"):
-            await asyncio.sleep(6)
+            await asyncio.sleep(4)
             await message.delete()
     else:
         await bot.process_commands(message)
@@ -102,7 +102,7 @@ async def react(ctx, accepted=True):
 
 
 async def delete_message(ctx):
-    await asyncio.sleep(3)
+    await asyncio.sleep(2)
     await ctx.message.delete()
 
 
@@ -110,18 +110,20 @@ async def delete_message(ctx):
 @bot.command(aliases=["ping", "info", "p"])
 async def status(ctx):
     await react(ctx)
-    embed = discord.Embed(title="Bot Status")
+    embed = discord.Embed(title="Bot Status", color=discord.Color.orange())
     embed.add_field(name="Status", value=":red_circle: Disabled" if DISABLED else ":green_circle: Enabled")
-    embed.add_field(name="Ping", value=str(round(bot.latency * 1000)) + "ms")
-    embed.add_field(name="CPU", value=str(psutil.cpu_percent()) + "%")
-    embed.add_field(name="RAM", value=str(round(psutil.virtual_memory().used * 10 ** -9, 2)) + "GB/" + str(round(
-        psutil.virtual_memory().total * 10 ** -9, 2)) + "GB")
-    embed.add_field(name="Guilds", value=str(len(bot.guilds)))
+    embed.add_field(name="Ping", value=":clock1: " + str(round(bot.latency * 1000)) + "ms")
+    embed.add_field(name="CPU", value=":desktop: " + str(psutil.cpu_percent()) + "%")
+    embed.add_field(name="RAM", value=":film_frames: " + str(round(psutil.virtual_memory().used * 10 ** -9, 2)) +
+                                      "GB/" + str(round(psutil.virtual_memory().total * 10 ** -9, 2)) + "GB")
+    embed.add_field(name="Guilds", value=":house: " + str(len(bot.guilds)))
     amount_users = 0
     for guild in bot.guilds:
         for _ in guild.members:
             amount_users += 1
-    embed.add_field(name="Users", value=str(amount_users))
+    embed.add_field(name="Users", value=":people_holding_hands: " + str(amount_users))
+    creator = bot.get_user(480284798028611584)
+    embed.set_footer(text="made by {0}".format(creator), icon_url=creator.avatar_url)
     await ctx.send(embed=embed)
     await delete_message(ctx)
 
