@@ -4,7 +4,7 @@ import time
 import asyncio
 import SECRETS
 
-PREFIX = ">"
+PREFIX = "."
 OWNER_ID = SECRETS.OWNER_ID
 TOKEN = SECRETS.TOKEN
 ACTIVITY = discord.Game("that's kinda sus ngl")
