@@ -106,28 +106,6 @@ async def delete_message(ctx):
 
 # ------------------- COMMANDS -------------------
 @bot.command()
-async def info(ctx):
-    if DISABLED:
-        await react(ctx, False)
-        await ctx.send("Bot is disabled.")
-        await delete_message(ctx)
-        return
-    output = ""
-    if ctx.message.author.voice and ctx.message.author.voice.channel:
-        channel = ctx.message.author.voice.channel
-        await react(ctx)
-        output += "{0} is connected to channel {1} (id: {2})\n".format(str(ctx.message.author), str(channel),
-                                                                       str(channel.id))
-        voice_members = channel.members
-        output += "Connected are:"
-        for member in voice_members:
-            output += "\n" + str(member)
-    await ctx.send(output)
-    print_log(output)
-    await delete_message(ctx)
-
-
-@bot.command()
 @commands.has_role("Mute Master")
 async def mute(ctx):
     if DISABLED:

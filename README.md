@@ -24,7 +24,6 @@ OWNER_ID=987654321
 ### Commands
 - **[prefix]mute:** Mutes everyone currently connected to your voic echat, requires a role named "Mute Master".
 - **[prefix]unmute:** Unmutes everyone currently connected to your voice chat, requires a role named "Mute Master".
-- **[prefix]info:** Lists the members currently connected to your voice chat.
 - **[prefix]disable:** Disables all functions of the bot, can only be run by bot-owner.
 - **[prefix]enable:** Reenables all functions of the bot, can only be run by bot-owner.
 - **[prefix]activity:** Changes the activity of the bot, can only be run by bot-owner.
