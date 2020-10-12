@@ -11,7 +11,7 @@ DISABLED = False
 PREFIX = ">"
 OWNER_ID = SECRETS.OWNER_ID
 TOKEN = SECRETS.TOKEN
-DEFAULT_ACTIVITY = discord.Game("WORK IN PROGRESS")
+DEFAULT_ACTIVITY = discord.Game("that's kinda sus ngl")
 bot = commands.Bot(command_prefix=PREFIX, activity=DEFAULT_ACTIVITY)
 
 
@@ -207,6 +207,7 @@ async def mute_error(ctx, error):
     await react(ctx, False)
     await ctx.send(error)
     print_log("Mute Role error of User", ctx.message.author, "in Guild", ctx.guild)
+    print_log(error)
     await delete_message(ctx)
 
 
@@ -217,6 +218,7 @@ async def no_ownership_error(ctx, error):
     await react(ctx, False)
     await ctx.send("You don't have permissions to do that.")
     print_log("No ownership error of User", ctx.message.author, "in Guild", ctx.guild)
+    print_log(error)
     await delete_message(ctx)
 
 
