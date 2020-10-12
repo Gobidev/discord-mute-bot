@@ -57,7 +57,7 @@ async def on_voice_state_update(member, before, after):
             member, before.channel, after.channel, guild))
 
     if after is not None and before.channel is not after.channel:
-        if str(after.channel) == "Tote":
+        if str(after.channel) == "Ghosts":
             await member.edit(mute=False)
         elif str(after.channel) == "Crew":
             if mute_server:
