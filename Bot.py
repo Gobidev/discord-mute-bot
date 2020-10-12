@@ -4,14 +4,15 @@ import time
 import asyncio
 import SECRETS
 
-
-MUTE_GUILD = {}
-DISABLED = False
-
 PREFIX = ">"
 OWNER_ID = SECRETS.OWNER_ID
 TOKEN = SECRETS.TOKEN
 DEFAULT_ACTIVITY = discord.Game("that's kinda sus ngl")
+
+
+# ------------------- DO NOT CHANGE THESE -------------------
+MUTE_GUILD = {}
+DISABLED = False
 bot = commands.Bot(command_prefix=PREFIX, activity=DEFAULT_ACTIVITY)
 
 
