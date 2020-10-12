@@ -1,3 +1,4 @@
 .idea
 SECRETS.py
 *.pyc
+Bot.log
