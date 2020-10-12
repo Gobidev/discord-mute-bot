@@ -2,13 +2,13 @@ import discord
 from discord.ext import commands
 import time
 import asyncio
+import psutil
 import SECRETS
 
 PREFIX = "."
 OWNER_ID = SECRETS.OWNER_ID
 TOKEN = SECRETS.TOKEN
 ACTIVITY = discord.Game("that's kinda sus ngl")
-
 
 # ------------------- DO NOT CHANGE THESE -------------------
 MUTE_GUILD = {}
@@ -31,8 +31,9 @@ async def on_message(message):
     print_log("{1}: '{0}' (in channel {2} on guild {3})".format(message.content, message.author, message.channel,
                                                                 message.channel.guild))
     if message.author == bot.user:
-        await asyncio.sleep(5)
-        await message.delete()
+        if message.content.startswith("-"):
+            await asyncio.sleep(6)
+            await message.delete()
     else:
         await bot.process_commands(message)
 
@@ -46,9 +47,9 @@ async def on_guild_join(guild):
 @bot.event
 async def on_command_error(ctx, error):
     print_log(error)
-    if "not found" in str(error):
+    if isinstance(error, commands.errors.CommandNotFound):
         await react(ctx, False)
-        await ctx.send("Invalid command.")
+        await ctx.send("- Invalid command.")
         await delete_message(ctx)
 
 
@@ -89,6 +90,7 @@ def print_log(*args, **kwargs):
 def is_owner():
     async def predicate(ctx):
         return ctx.author.id == OWNER_ID
+
     return commands.check(predicate)
 
 
@@ -105,12 +107,31 @@ async def delete_message(ctx):
 
 
 # ------------------- COMMANDS -------------------
-@bot.command()
+@bot.command(aliases=["ping", "info", "p"])
+async def status(ctx):
+    await react(ctx)
+    embed = discord.Embed(title="Bot Status")
+    embed.add_field(name="Status", value=":red_circle: Disabled" if DISABLED else ":green_circle: Enabled")
+    embed.add_field(name="Ping", value=str(round(bot.latency * 1000)) + "ms")
+    embed.add_field(name="CPU", value=str(psutil.cpu_percent()) + "%")
+    embed.add_field(name="RAM", value=str(round(psutil.virtual_memory().used * 10 ** -9, 2)) + "GB/" + str(round(
+        psutil.virtual_memory().total * 10 ** -9, 2)) + "GB")
+    embed.add_field(name="Guilds", value=str(len(bot.guilds)))
+    amount_users = 0
+    for guild in bot.guilds:
+        for _ in guild.members:
+            amount_users += 1
+    embed.add_field(name="Users", value=str(amount_users))
+    await ctx.send(embed=embed)
+    await delete_message(ctx)
+
+
+@bot.command(aliases=["m"])
 @commands.has_role("Mute Master")
 async def mute(ctx):
     if DISABLED:
         await react(ctx, False)
-        await ctx.send("Bot is disabled.")
+        await ctx.send("- Bot is disabled.")
         await delete_message(ctx)
         return
     global MUTE_GUILD
@@ -125,16 +146,16 @@ async def mute(ctx):
         await delete_message(ctx)
     else:
         await react(ctx, False)
-        await ctx.send("You need to be connected to a voice chat to use this command.")
+        await ctx.send("- You need to be connected to a voice chat to use this command.")
         await delete_message(ctx)
 
 
-@bot.command()
+@bot.command(aliases=["um", "u"])
 @commands.has_role("Mute Master")
 async def unmute(ctx):
     if DISABLED:
         await react(ctx, False)
-        await ctx.send("Bot is disabled.")
+        await ctx.send("- Bot is disabled.")
         await delete_message(ctx)
         return
     global MUTE_GUILD
@@ -149,7 +170,7 @@ async def unmute(ctx):
         await delete_message(ctx)
     else:
         await react(ctx, False)
-        await ctx.send("You need to be connected to a voice chat to use this command.")
+        await ctx.send("- You need to be connected to a voice chat to use this command.")
         await delete_message(ctx)
 
 
@@ -160,12 +181,12 @@ async def activity(ctx, *args):
     global ACTIVITY
     if DISABLED:
         await react(ctx, False)
-        await ctx.send("Bot is disabled.")
+        await ctx.send("- Bot is disabled.")
         await delete_message(ctx)
         return
     if len(args) < 1:
         await react(ctx, False)
-        await ctx.send("Invalid usage: [prefix]activity 'New Activity'")
+        await ctx.send("- Invalid usage: {0}activity 'New Activity'".format(PREFIX))
         await delete_message(ctx)
         return
     await react(ctx)
@@ -184,7 +205,7 @@ async def disable(ctx):
     global DISABLED
     if DISABLED:
         await react(ctx, False)
-        await ctx.send("The Bot is already disabled.")
+        await ctx.send("- The Bot is already disabled.")
         await delete_message(ctx)
         return
     await react(ctx)
@@ -200,7 +221,7 @@ async def enable(ctx):
     global DISABLED
     if not DISABLED:
         await react(ctx, False)
-        await ctx.send("The Bot is already enabled.")
+        await ctx.send("- The Bot is already enabled.")
         await delete_message(ctx)
         return
     await react(ctx)
@@ -224,9 +245,9 @@ async def mute_error(ctx, error):
 @enable.error
 @activity.error
 async def no_ownership_error(ctx, error):
-    if "check functions" in str(error):
+    if isinstance(error, commands.errors.CheckFailure):
         await react(ctx, False)
-        await ctx.send("You don't have permissions to do that.")
+        await ctx.send("- You don't have permissions to do that.")
         print_log("No ownership error of User", ctx.message.author, "in Guild", ctx.guild)
         await delete_message(ctx)
 
