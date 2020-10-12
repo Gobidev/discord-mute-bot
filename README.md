@@ -5,7 +5,8 @@ playing Among Us in a voice channel.
 
 ## Installation
 - Install Python 3.8
-- [Install the discord.py library](https://discordpy.readthedocs.io/en/latest/intro.html#installing) using pip
+- [Install the discord.py library](https://discordpy.readthedocs.io/en/latest/intro.html#installing) and the psutil
+library using pip
 - Clone this repository
 - Create a file named SECRETS.py and enter your discord bot token and discord-id, i.e.
 <pre>
@@ -22,8 +23,9 @@ OWNER_ID=987654321
 ## Features
 
 ### Commands
-- **[prefix]mute:** Mutes everyone currently connected to your voic echat, requires a role named "Mute Master".
-- **[prefix]unmute:** Unmutes everyone currently connected to your voice chat, requires a role named "Mute Master".
+- **[prefix]mute/m:** Mutes everyone currently connected to your voic echat, requires a role named "Mute Master".
+- **[prefix]status/ping/info/p:** Shows current status of the bot 
+- **[prefix]unmute/um/u:** Unmutes everyone currently connected to your voice chat, requires a role named "Mute Master".
 - **[prefix]disable:** Disables all functions of the bot, can only be run by bot-owner.
 - **[prefix]enable:** Reenables all functions of the bot, can only be run by bot-owner.
 - **[prefix]activity:** Changes the activity of the bot, can only be run by bot-owner.
