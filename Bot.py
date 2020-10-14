@@ -34,7 +34,7 @@ async def on_message(message):
     print_log("{1}: '{0}' (in channel {2} on guild {3})".format(message.content, message.author, message.channel,
                                                                 message.channel.guild))
     if message.author == bot.user:
-        if message.content != "":
+        if message.content != "" and not message.content.startswith("```"):
             await asyncio.sleep(4)
             await message.delete()
     else:
