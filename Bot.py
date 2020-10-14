@@ -90,7 +90,10 @@ def print_log(*args, **kwargs):
     t = time.strftime("%Y-%m-%d %T")
     print(t, *args, **kwargs)
     with open('Bot.log', 'a') as file:
-        print(t, *args, **kwargs, file=file)
+        try:
+            print(t, *args, **kwargs, file=file)
+        except UnicodeEncodeError:
+            print_log("Error writing log entry")
 
 
 def is_owner():
@@ -113,7 +116,9 @@ async def delete_message(ctx):
 
 
 # ------------------- COMMANDS -------------------
-@bot.command(aliases=["ping", "info", "p"])
+@bot.command(aliases=["ping", "info", "p"], brief="Shows the current status of the bot",
+             description="Shows if the bot is active, current ping time, CPU and RAM usage, number of guilds and the"
+                         "number of users the bot has.")
 async def status(ctx):
     await react(ctx)
     embed = discord.Embed(title="Bot Status", color=discord.Color.orange())
@@ -134,7 +139,8 @@ async def status(ctx):
     await delete_message(ctx)
 
 
-@bot.command(aliases=["m"])
+@bot.command(aliases=["m"], brief="Mutes all members in a voice chat",
+             description="Mutes all members that are currently connected to the same voice chat you are.")
 @commands.has_role(MUTE_PERMISSION_ROLE_NAME)
 async def mute(ctx):
     if DISABLED:
@@ -158,7 +164,8 @@ async def mute(ctx):
         await delete_message(ctx)
 
 
-@bot.command(aliases=["um", "u"])
+@bot.command(aliases=["um", "u"], brief="Un-mutes all members in a voice chat",
+             description="Un-mutes all members that are currently connected to the same voice chat you are.")
 @commands.has_role(MUTE_PERMISSION_ROLE_NAME)
 async def unmute(ctx):
     if DISABLED:
@@ -183,7 +190,8 @@ async def unmute(ctx):
 
 
 # ------------------- OWNER COMMANDS -------------------
-@bot.command()
+@bot.command(aliases=["a"], brief="Changes the activity of the bot",
+             description="Changes the current activity of the bot that is displayed in discord below the bots name.")
 @is_owner()
 async def activity(ctx, *args):
     global ACTIVITY
@@ -207,7 +215,8 @@ async def activity(ctx, *args):
     await delete_message(ctx)
 
 
-@bot.command()
+@bot.command(aliases=["d"], brief="Disables the bot",
+             description="Disables all commands and listeners of the bot except for {0}status.".format(PREFIX))
 @is_owner()
 async def disable(ctx):
     global DISABLED
@@ -223,7 +232,8 @@ async def disable(ctx):
     await delete_message(ctx)
 
 
-@bot.command()
+@bot.command(aliases=["e"], brief="Enables the bot",
+             description="Enables all commands and listeners of the bot.")
 @is_owner()
 async def enable(ctx):
     global DISABLED
