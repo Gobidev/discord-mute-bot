@@ -31,7 +31,7 @@ async def on_message(message):
     print_log("{1}: '{0}' (in channel {2} on guild {3})".format(message.content, message.author, message.channel,
                                                                 message.channel.guild))
     if message.author == bot.user:
-        if message.content.startswith("-"):
+        if message.content != "":
             await asyncio.sleep(4)
             await message.delete()
     else:
@@ -49,7 +49,7 @@ async def on_command_error(ctx, error):
     print_log(error)
     if isinstance(error, commands.errors.CommandNotFound):
         await react(ctx, False)
-        await ctx.send("- Invalid command.")
+        await ctx.send("Invalid command.")
         await delete_message(ctx)
 
 
@@ -133,7 +133,7 @@ async def status(ctx):
 async def mute(ctx):
     if DISABLED:
         await react(ctx, False)
-        await ctx.send("- Bot is disabled.")
+        await ctx.send("Bot is disabled.")
         await delete_message(ctx)
         return
     global MUTE_GUILD
@@ -148,7 +148,7 @@ async def mute(ctx):
         await delete_message(ctx)
     else:
         await react(ctx, False)
-        await ctx.send("- You need to be connected to a voice chat to use this command.")
+        await ctx.send("You need to be connected to a voice chat to use this command.")
         await delete_message(ctx)
 
 
@@ -157,7 +157,7 @@ async def mute(ctx):
 async def unmute(ctx):
     if DISABLED:
         await react(ctx, False)
-        await ctx.send("- Bot is disabled.")
+        await ctx.send("Bot is disabled.")
         await delete_message(ctx)
         return
     global MUTE_GUILD
@@ -172,7 +172,7 @@ async def unmute(ctx):
         await delete_message(ctx)
     else:
         await react(ctx, False)
-        await ctx.send("- You need to be connected to a voice chat to use this command.")
+        await ctx.send("You need to be connected to a voice chat to use this command.")
         await delete_message(ctx)
 
 
@@ -183,12 +183,12 @@ async def activity(ctx, *args):
     global ACTIVITY
     if DISABLED:
         await react(ctx, False)
-        await ctx.send("- Bot is disabled.")
+        await ctx.send("Bot is disabled.")
         await delete_message(ctx)
         return
     if len(args) < 1:
         await react(ctx, False)
-        await ctx.send("- Invalid usage: {0}activity 'New Activity'".format(PREFIX))
+        await ctx.send("Invalid usage: {0}activity 'New Activity'".format(PREFIX))
         await delete_message(ctx)
         return
     await react(ctx)
@@ -207,7 +207,7 @@ async def disable(ctx):
     global DISABLED
     if DISABLED:
         await react(ctx, False)
-        await ctx.send("- The Bot is already disabled.")
+        await ctx.send("The Bot is already disabled.")
         await delete_message(ctx)
         return
     await react(ctx)
@@ -223,7 +223,7 @@ async def enable(ctx):
     global DISABLED
     if not DISABLED:
         await react(ctx, False)
-        await ctx.send("- The Bot is already enabled.")
+        await ctx.send("The Bot is already enabled.")
         await delete_message(ctx)
         return
     await react(ctx)
@@ -249,7 +249,7 @@ async def mute_error(ctx, error):
 async def no_ownership_error(ctx, error):
     if isinstance(error, commands.errors.CheckFailure):
         await react(ctx, False)
-        await ctx.send("- You don't have permissions to do that.")
+        await ctx.send("You don't have permissions to do that.")
         print_log("No ownership error of User", ctx.message.author, "in Guild", ctx.guild)
         await delete_message(ctx)
 
