@@ -31,8 +31,9 @@ async def on_ready():
 
 @bot.event
 async def on_message(message):
-    print_log("{1}: '{0}' (in channel {2} on guild {3})".format(message.content, message.author, message.channel,
-                                                                message.channel.guild))
+    if isinstance(message.channel, discord.TextChannel):
+        print_log("{1}: '{0}' (in channel {2} on guild {3})".format(message.content, message.author, message.channel,
+                                                                    message.channel.guild))
     if message.author == bot.user:
         if message.content != "" and not message.content.startswith("```"):
             await asyncio.sleep(4)
@@ -111,8 +112,9 @@ async def react(ctx, accepted=True):
 
 
 async def delete_message(ctx):
-    await asyncio.sleep(2)
-    await ctx.message.delete()
+    if isinstance(ctx.channel, discord.TextChannel):
+        await asyncio.sleep(2)
+        await ctx.message.delete()
 
 
 # ------------------- COMMANDS -------------------
