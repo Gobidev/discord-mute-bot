@@ -12,6 +12,9 @@ TOKEN = SECRETS.TOKEN
 GAME_CHANNEL_NAME = "Crew"
 DEAD_CHANNEL_NAME = "Ghosts"
 MUTE_PERMISSION_ROLE_NAME = "Mute Master"
+BLOCK_SERVER_MUTE = True
+
+# todo being able to change variables for individual guilds
 
 # ------------------- DO NOT CHANGE THESE -------------------
 MUTE_GUILD = {}
@@ -70,18 +73,21 @@ async def on_voice_state_update(member, before, after):
     mute_server = MUTE_GUILD[guild.id]
 
     if before.channel is not after.channel:
-        print_log("Voice state update: {0} from {1} to {2} on Guild {3}".format(
+        print_log("Voice channel change: {0} from {1} to {2} on Guild {3}".format(
             member, before.channel, after.channel, guild))
+    else:
+        if not BLOCK_SERVER_MUTE:
+            return
 
-    if after is not None and before.channel is not after.channel:
-        if str(after.channel) == DEAD_CHANNEL_NAME:
+    if after is not None:
+        if str(after.channel) == DEAD_CHANNEL_NAME and member.voice.mute:
             await member.edit(mute=False)
             print_log("Un-muted member", member, "in channel", after.channel, "on guild", after.channel.guild)
         elif str(after.channel) == GAME_CHANNEL_NAME:
-            if mute_server:
+            if mute_server and not member.voice.mute:
                 await member.edit(mute=True)
                 print_log("Muted member", member, "in channel", after.channel, "on guild", after.channel.guild)
-            else:
+            elif not mute_server and member.voice.mute:
                 await member.edit(mute=False)
                 print_log("Un-muted member", member, "in channel", after.channel, "on guild", after.channel.guild)
 
@@ -155,9 +161,9 @@ async def mute(ctx):
         print_log("Triggered mute in Guild", ctx.guild)
         channel = ctx.message.author.voice.channel
         await react(ctx)
+        MUTE_GUILD[ctx.guild.id] = True
         for member in channel.members:
             await member.edit(mute=True)
-        MUTE_GUILD[ctx.guild.id] = True
         print_log("Muted", str(len(channel.members)), "Members")
         await delete_message(ctx)
     else:
@@ -180,9 +186,9 @@ async def unmute(ctx):
         print_log("Triggered unmute in Guild", ctx.guild)
         channel = ctx.message.author.voice.channel
         await react(ctx)
+        MUTE_GUILD[ctx.guild.id] = False
         for member in channel.members:
             await member.edit(mute=False)
-        MUTE_GUILD[ctx.guild.id] = False
         print_log("Un-muted", str(len(channel.members)), "Members")
         await delete_message(ctx)
     else:

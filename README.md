@@ -34,3 +34,5 @@ OWNER_ID=987654321
 - People who join the "Crew"-channel, while mute is active will automatically be muted.
 - People joining the "Ghosts"-channel will be automatically unmuted.
 - People who are muted and join the "Crew"-channel, while mute is inactive, will automatically be unmuted.
+- Other server mute actions performed by members are automatically reverted, this can be disabled in the global
+variables at the top of Bot.py.
