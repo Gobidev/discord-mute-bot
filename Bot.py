@@ -6,9 +6,12 @@ import psutil
 import SECRETS
 
 PREFIX = "."
+ACTIVITY = discord.Game("I mute U")
 OWNER_ID = SECRETS.OWNER_ID
 TOKEN = SECRETS.TOKEN
-ACTIVITY = discord.Game("I mute U")
+GAME_CHANNEL_NAME = "Crew"
+DEAD_CHANNEL_NAME = "Ghosts"
+MUTE_PERMISSION_ROLE_NAME = "Mute Master"
 
 # ------------------- DO NOT CHANGE THESE -------------------
 MUTE_GUILD = {}
@@ -70,10 +73,10 @@ async def on_voice_state_update(member, before, after):
             member, before.channel, after.channel, guild))
 
     if after is not None and before.channel is not after.channel:
-        if str(after.channel) == "Ghosts":
+        if str(after.channel) == DEAD_CHANNEL_NAME:
             await member.edit(mute=False)
             print_log("Un-muted member", member, "in channel", after.channel, "on guild", after.channel.guild)
-        elif str(after.channel) == "Crew":
+        elif str(after.channel) == GAME_CHANNEL_NAME:
             if mute_server:
                 await member.edit(mute=True)
                 print_log("Muted member", member, "in channel", after.channel, "on guild", after.channel.guild)
@@ -132,7 +135,7 @@ async def status(ctx):
 
 
 @bot.command(aliases=["m"])
-@commands.has_role("Mute Master")
+@commands.has_role(MUTE_PERMISSION_ROLE_NAME)
 async def mute(ctx):
     if DISABLED:
         await react(ctx, False)
@@ -156,7 +159,7 @@ async def mute(ctx):
 
 
 @bot.command(aliases=["um", "u"])
-@commands.has_role("Mute Master")
+@commands.has_role(MUTE_PERMISSION_ROLE_NAME)
 async def unmute(ctx):
     if DISABLED:
         await react(ctx, False)
