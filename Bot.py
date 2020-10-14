@@ -146,7 +146,7 @@ async def mute(ctx):
         await react(ctx)
         for member in channel.members:
             await member.edit(mute=True)
-            MUTE_GUILD[ctx.guild.id] = True
+        MUTE_GUILD[ctx.guild.id] = True
         print_log("Muted", str(len(channel.members)), "Members")
         await delete_message(ctx)
     else:
@@ -170,7 +170,7 @@ async def unmute(ctx):
         await react(ctx)
         for member in channel.members:
             await member.edit(mute=False)
-            MUTE_GUILD[ctx.guild.id] = False
+        MUTE_GUILD[ctx.guild.id] = False
         print_log("Un-muted", str(len(channel.members)), "Members")
         await delete_message(ctx)
     else:
