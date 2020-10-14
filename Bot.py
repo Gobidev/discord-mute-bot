@@ -8,7 +8,7 @@ import SECRETS
 PREFIX = "."
 OWNER_ID = SECRETS.OWNER_ID
 TOKEN = SECRETS.TOKEN
-ACTIVITY = discord.Game("that's kinda sus ngl")
+ACTIVITY = discord.Game("I mute U")
 
 # ------------------- DO NOT CHANGE THESE -------------------
 MUTE_GUILD = {}
