@@ -23,12 +23,12 @@ OWNER_ID=987654321
 ## Features
 
 ### Commands
-- **[prefix]mute/m:** Mutes everyone currently connected to your voic echat, requires a role named "Mute Master".
-- **[prefix]status/ping/info/p:** Shows current status of the bot 
+- **[prefix]status/ping/info/p:** Shows current status of the bot
+- **[prefix]mute/m:** Mutes everyone currently connected to your voic echat, requires a role named "Mute Master". 
 - **[prefix]unmute/um/u:** Unmutes everyone currently connected to your voice chat, requires a role named "Mute Master".
-- **[prefix]disable:** Disables all functions of the bot, can only be run by bot-owner.
-- **[prefix]enable:** Reenables all functions of the bot, can only be run by bot-owner.
-- **[prefix]activity:** Changes the activity of the bot, can only be run by bot-owner.
+- **[prefix]disable/d:** Disables all functions of the bot, can only be run by bot-owner.
+- **[prefix]enable/e:** Reenables all functions of the bot, can only be run by bot-owner.
+- **[prefix]activity/a:** Changes the activity of the bot, can only be run by bot-owner.
 
 ### Other
 - People who join the "Crew"-channel, while mute is active will automatically be muted.
