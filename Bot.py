@@ -284,6 +284,13 @@ async def unmute(ctx):
         await delete_message(ctx)
 
 
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def config(ctx, *args):
+    guild = get_guild_config(ctx.guild.id)
+    if args[0] == "mute-role":
+        pass
+
 # ------------------- OWNER COMMANDS -------------------
 @bot.command(aliases=["d"], brief="Disables the bot",
              description="Disables all commands and listeners of the bot except for {0}status.".format(PREFIX))
