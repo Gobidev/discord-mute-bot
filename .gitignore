@@ -2,3 +2,4 @@
 SECRETS.py
 *.pyc
 Bot.log
+guilds.config
