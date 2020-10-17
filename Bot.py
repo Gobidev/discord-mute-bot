@@ -2,41 +2,103 @@ import discord
 from discord.ext import commands
 import time
 import asyncio
+import dill
+import os.path
 import psutil
 import SECRETS
 
 PREFIX = "."
-ACTIVITY = discord.Game("I mute U")
 OWNER_ID = SECRETS.OWNER_ID
 TOKEN = SECRETS.TOKEN
-GAME_CHANNEL_NAME = "Crew"
-DEAD_CHANNEL_NAME = "Ghosts"
-MUTE_PERMISSION_ROLE_NAME = "Mute Master"
-BLOCK_SERVER_MUTE = True
+LOG_CHAT = True
 
-# todo being able to change variables for individual guilds
 
-# ------------------- DO NOT CHANGE THESE -------------------
-MUTE_GUILD = {}
+# ------------------- DO NOT EDIT THIS -------------------
+def print_log(*args, **kwargs):
+    t = time.strftime("%Y-%m-%d %T")
+    print(t, *args, **kwargs)
+    with open('Bot.log', 'a') as file:
+        try:
+            print(t, *args, **kwargs, file=file)
+        except UnicodeEncodeError:
+            print_log("Error writing log entry")
+
+
+def load_guilds():
+    global guilds
+    if os.path.isfile("guilds.config"):
+        with open("guilds.config", "rb") as config_file:
+            guilds = dill.load(config_file)
+        print_log("Loaded {0} guilds configs from file".format(len(guilds)))
+
+
+def save_guilds():
+    global guilds
+    with open("guilds.config", "wb") as config_file:
+        dill.dump(guilds, config_file)
+    print_log("Saved config of {0} guilds to file".format(len(guilds)))
+
+
+def get_guild_config(guild_id):
+    global guilds
+    for guild in guilds:
+        if guild.guild_id == guild_id:
+            return guild
+
+
+class Guild:
+    def __init__(self, guild):
+        self.name = str(guild)
+        self.guild_id = str(guild.id)
+        self.is_muted = False
+        self.game_channel_name = "Crew"
+        self.dead_channel_name = "Ghosts"
+        self.mute_permissions_role = "Mute Master"
+        self.block_server_mute = False
+
+        print_log("Added guild", self.name)
+
+
 DISABLED = False
-bot = commands.Bot(command_prefix=PREFIX, activity=ACTIVITY)
+guilds = []
+load_guilds()
+
+bot = commands.Bot(command_prefix=PREFIX)
 
 
 # ------------------- EVENTS -------------------
 @bot.event
 async def on_ready():
-    global MUTE_GUILD
+    global guilds
     print_log('Logged in as {0.user}'.format(bot))
-    for guild in bot.guilds:
-        MUTE_GUILD[guild.id] = False
-    print_log("Guilds:", MUTE_GUILD)
+
+    if not guilds:
+        for guild in bot.guilds:
+            guilds.append(guild)
+        save_guilds()
+        print_log("Added {0} guilds to config".format(len(bot.guilds)))
+
+    elif len(guilds) != len(bot.guilds):
+        saved_guild_ids = []
+
+        for guild in guilds:
+            saved_guild_ids.append(guild.guild_id)
+        new_guilds = 0
+
+        for guild in bot.guilds:
+            if guild.id not in saved_guild_ids:
+                guilds.append(guild)
+                new_guilds += 1
+        save_guilds()
+        print_log("Added {0} guilds to config".format(new_guilds))
 
 
 @bot.event
 async def on_message(message):
     if isinstance(message.channel, discord.TextChannel):
-        print_log("{1}: '{0}' (in channel {2} on guild {3})".format(message.content, message.author, message.channel,
-                                                                    message.channel.guild))
+        if LOG_CHAT:
+            print_log("{1}: '{0}' (in channel {2} on guild {3})".format(message.content, message.author,
+                                                                        message.channel, message.channel.guild))
     if message.author == bot.user:
         if message.content != "" and not message.content.startswith("```"):
             await asyncio.sleep(4)
@@ -47,8 +109,11 @@ async def on_message(message):
 
 @bot.event
 async def on_guild_join(guild):
-    global MUTE_GUILD
-    MUTE_GUILD[guild.id] = False
+    global guilds
+    print_log("Joined guild", guild)
+    guilds.append(guild)
+    print("Added config for guild", guild)
+    save_guilds()
 
 
 @bot.event
@@ -65,44 +130,29 @@ async def on_voice_state_update(member, before, after):
     if DISABLED:
         return
 
-    if before.channel is not None:
-        guild = before.channel.guild
-    else:
-        guild = after.channel.guild
-
-    mute_server = MUTE_GUILD[guild.id]
+    guild = get_guild_config(after.channel.guild.id)
 
     if before.channel is not after.channel:
         print_log("Voice channel change: {0} from {1} to {2} on Guild {3}".format(
-            member, before.channel, after.channel, guild))
+            member, before.channel, after.channel, guild.name))
     else:
-        if not BLOCK_SERVER_MUTE:
+        if not guild.block_server_mute:
             return
 
     if after is not None:
-        if str(after.channel) == DEAD_CHANNEL_NAME and member.voice.mute:
+        if str(after.channel) == guild.dead_channel_name and member.voice.mute:
             await member.edit(mute=False)
-            print_log("Un-muted member", member, "in channel", after.channel, "on guild", after.channel.guild)
-        elif str(after.channel) == GAME_CHANNEL_NAME:
-            if mute_server and not member.voice.mute:
+            print_log("Un-muted member", member, "in channel", after.channel, "on guild", guild.name)
+        elif str(after.channel) == guild.game_channel_name:
+            if guild.is_muted and not member.voice.mute:
                 await member.edit(mute=True)
-                print_log("Muted member", member, "in channel", after.channel, "on guild", after.channel.guild)
-            elif not mute_server and member.voice.mute:
+                print_log("Muted member", member, "in channel", after.channel, "on guild", guild.name)
+            elif not guild.is_muted and member.voice.mute:
                 await member.edit(mute=False)
-                print_log("Un-muted member", member, "in channel", after.channel, "on guild", after.channel.guild)
+                print_log("Un-muted member", member, "in channel", after.channel, "on guild", guild.name)
 
 
 # ------------------- OTHER FUNCTIONS -------------------
-def print_log(*args, **kwargs):
-    t = time.strftime("%Y-%m-%d %T")
-    print(t, *args, **kwargs)
-    with open('Bot.log', 'a') as file:
-        try:
-            print(t, *args, **kwargs, file=file)
-        except UnicodeEncodeError:
-            print_log("Error writing log entry")
-
-
 def is_owner():
     async def predicate(ctx):
         return ctx.author.id == OWNER_ID
@@ -147,21 +197,33 @@ async def status(ctx):
     await delete_message(ctx)
 
 
-@bot.command(aliases=["m"], brief="Mutes all members in a voice chat",
-             description="Mutes all members that are currently connected to the same voice chat you are.")
-@commands.has_role(MUTE_PERMISSION_ROLE_NAME)
-async def mute(ctx):
+async def mute_commands_check(ctx):
     if DISABLED:
         await react(ctx, False)
         await ctx.send("Bot is disabled.")
         await delete_message(ctx)
+        return False
+
+    guild = get_guild_config(ctx.guild)
+    if guild.mute_permissions_role not in ctx.message.author.roles:
+        await mute_error(ctx, "You need to have the role '{0}' to use this command".format(guild.mute_permissions_role))
+        return False
+    else:
+        return guild
+
+
+@bot.command(aliases=["m"], brief="Mutes all members in a voice chat",
+             description="Mutes all members that are currently connected to the same voice chat you are.")
+async def mute(ctx):
+    guild = mute_commands_check(ctx)
+    if not guild:
         return
-    global MUTE_GUILD
+
     if ctx.message.author.voice and ctx.message.author.voice.channel:
         print_log("Triggered mute in Guild", ctx.guild)
         channel = ctx.message.author.voice.channel
         await react(ctx)
-        MUTE_GUILD[ctx.guild.id] = True
+        guild.is_muted = True
         for member in channel.members:
             await member.edit(mute=True)
         print_log("Muted", str(len(channel.members)), "Members")
@@ -174,19 +236,16 @@ async def mute(ctx):
 
 @bot.command(aliases=["um", "u"], brief="Un-mutes all members in a voice chat",
              description="Un-mutes all members that are currently connected to the same voice chat you are.")
-@commands.has_role(MUTE_PERMISSION_ROLE_NAME)
 async def unmute(ctx):
-    if DISABLED:
-        await react(ctx, False)
-        await ctx.send("Bot is disabled.")
-        await delete_message(ctx)
+    guild = mute_commands_check(ctx)
+    if not guild:
         return
-    global MUTE_GUILD
+
     if ctx.message.author.voice and ctx.message.author.voice.channel:
         print_log("Triggered unmute in Guild", ctx.guild)
         channel = ctx.message.author.voice.channel
         await react(ctx)
-        MUTE_GUILD[ctx.guild.id] = False
+        guild.is_muted = False
         for member in channel.members:
             await member.edit(mute=False)
         print_log("Un-muted", str(len(channel.members)), "Members")
