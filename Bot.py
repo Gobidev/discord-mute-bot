@@ -58,6 +58,11 @@ class Guild:
 
         print_log("Added guild", self.name)
 
+    def print_settings(self):
+        print_log("Server settings of guild {0.name} (id: {0.guild_id}): is_muted: {0.is_muted}, game_channel_name:"
+                  "{0.game_channel_name}, dead_channel_name: {0.dead_channel_name}, mute_permissions_role:"
+                  "{0.mute_permissions_role}, lock_server_mute: {0.lock_server_mute}".format(self))
+
 
 DISABLED = False
 ACTIVITY = None
@@ -107,7 +112,7 @@ async def on_message(message):
                                                                         message.channel, message.channel.guild))
     if message.author == bot.user:
         if message.content != "" and not message.content.startswith("```"):
-            await asyncio.sleep(8)
+            await asyncio.sleep(5)
             await message.delete()
 
     else:
