@@ -107,7 +107,7 @@ async def on_message(message):
                                                                         message.channel, message.channel.guild))
     if message.author == bot.user:
         if message.content != "" and not message.content.startswith("```"):
-            await asyncio.sleep(4)
+            await asyncio.sleep(8)
             await message.delete()
 
     else:
@@ -124,7 +124,7 @@ async def on_guild_join(guild):
 
     await update_default_activity()
 
-
+"""
 @bot.event
 async def on_command_error(ctx, error):
     print_log(error)
@@ -132,6 +132,7 @@ async def on_command_error(ctx, error):
         await react(ctx, False)
         await ctx.send("Invalid command.")
         await delete_message(ctx)
+"""
 
 
 @bot.event
@@ -196,6 +197,7 @@ def unmute_all_guilds():
     global guilds
     for guild in guilds:
         guild.is_muted = False
+    print_log("Un-muted all guilds")
     save_guilds()
 
 
@@ -284,12 +286,36 @@ async def unmute(ctx):
         await delete_message(ctx)
 
 
-@bot.command()
+@bot.group()
 @commands.has_permissions(administrator=True)
-async def config(ctx, *args):
+async def config(ctx):
+    if not isinstance(ctx.channel, discord.TextChannel):
+        await react(ctx, False)
+        await ctx.send("This command does not work in DMs.")
+        await delete_message(ctx)
+    if ctx.invoked_subcommand is None:
+        await react(ctx, False)
+        await ctx.send("This command requires at least one argument.")
+        await delete_message(ctx)
+
+
+@config.command()
+async def mute_role(ctx, new_role_name: str):
+
     guild = get_guild_config(ctx.guild.id)
-    if args[0] == "mute-role":
-        pass
+    old_role_name = guild.mute_permissions_role
+    if new_role_name == old_role_name:
+        await react(ctx, False)
+        await ctx.send("The new role-name has to differ from the old one")
+        return
+    await react(ctx)
+    guild.mute_permissions_role = new_role_name
+    print_log("Changed mute-role of guild ", guild.name, "from", old_role_name, "to", new_role_name)
+    save_guilds()
+    await ctx.send("Changed the mute-role from '{0}' to '{1}'.".format(old_role_name, new_role_name))
+
+    await delete_message(ctx)
+
 
 # ------------------- OWNER COMMANDS -------------------
 @bot.command(aliases=["d"], brief="Disables the bot",
@@ -345,12 +371,20 @@ async def mute_error(ctx, error):
 
 @disable.error
 @enable.error
-async def no_ownership_error(ctx, error):
+@config.error
+async def no_permission_error(ctx, error):
     if isinstance(error, commands.errors.CheckFailure):
         await react(ctx, False)
         await ctx.send("You don't have permissions to do that.")
-        print_log("No ownership error of User", ctx.message.author, "in Guild", ctx.guild)
+        print_log("No permission error of User", ctx.message.author, "in Guild", ctx.guild)
         await delete_message(ctx)
+
+
+@mute_role.error
+async def required_argument_missing_error(ctx, error):
+    if isinstance(error, commands.errors.MissingRequiredArgument):
+        await react(ctx, False)
+        await ctx.send(error)
 
 
 bot.run(TOKEN)
