@@ -58,11 +58,6 @@ class Guild:
 
         print_log("Added guild", self.name)
 
-    def print_settings(self):
-        print_log("Server settings of guild {0.name} (id: {0.guild_id}): is_muted: {0.is_muted}, game_channel_name:"
-                  "{0.game_channel_name}, dead_channel_name: {0.dead_channel_name}, mute_permissions_role:"
-                  "{0.mute_permissions_role}, lock_server_mute: {0.lock_server_mute}".format(self))
-
 
 DISABLED = False
 ACTIVITY = None
@@ -79,7 +74,6 @@ async def on_ready():
     print_log('Logged in as {0.user}'.format(bot))
 
     if not guilds:
-
         for guild in bot.guilds:
             guilds.append(Guild(guild))
         print_log("Added {0} guilds to config".format(len(bot.guilds)))
@@ -251,10 +245,10 @@ async def status(ctx):
 
 @bot.command(aliases=["m"], brief="Mutes all members in a voice chat",
              description="Mutes all members that are currently connected to the same voice chat you are.")
+@commands.guild_only()
 @has_mute_role()
 async def mute(ctx):
     guild = get_guild_config(ctx.guild.id)
-
     if ctx.message.author.voice and ctx.message.author.voice.channel:
         print_log("Triggered mute in Guild", ctx.guild)
         channel = ctx.message.author.voice.channel
@@ -272,6 +266,7 @@ async def mute(ctx):
 
 @bot.command(aliases=["um", "u"], brief="Un-mutes all members in a voice chat",
              description="Un-mutes all members that are currently connected to the same voice chat you are.")
+@commands.guild_only()
 @has_mute_role()
 async def unmute(ctx):
     guild = get_guild_config(ctx.guild.id)
@@ -291,17 +286,22 @@ async def unmute(ctx):
         await delete_message(ctx)
 
 
-@bot.group()
+@bot.group(aliases=["cfg", "settings"], brief="Changes the bot settings for the guild",
+           description="Subcommands to change settings of the bot: mute_role, game_channel, dead_channel, block_mute")
+# todo add remaining subcommands
+@commands.guild_only()
 @commands.has_permissions(administrator=True)
 async def config(ctx):
     if not isinstance(ctx.channel, discord.TextChannel):
         await react(ctx, False)
         await ctx.send("This command does not work in DMs.")
         await delete_message(ctx)
+        return
     if ctx.invoked_subcommand is None:
         await react(ctx, False)
         await ctx.send("This command requires at least one argument.")
         await delete_message(ctx)
+        return
 
 
 @config.command()
@@ -363,12 +363,11 @@ async def enable(ctx):
 @unmute.error
 async def mute_error(ctx, error):
     await react(ctx, False)
-    if isinstance(error, commands.errors.CheckFailure):
-        try:
-            guild = get_guild_config(ctx.guild.id)
-        except AttributeError:
-            await ctx.send("This command cannot be used in DMs.")
-            return
+    if isinstance(error, commands.errors.NoPrivateMessage):
+        await ctx.send(error)
+        return
+    elif isinstance(error, commands.errors.CheckFailure):
+        guild = get_guild_config(ctx.guild.id)
         await ctx.send("You need to have the role '{0}' to use this command.".format(guild.mute_permissions_role))
         print_log("Mute Role error of User", ctx.message.author, "in Guild", ctx.guild)
         await delete_message(ctx)
@@ -378,8 +377,11 @@ async def mute_error(ctx, error):
 @enable.error
 @config.error
 async def no_permission_error(ctx, error):
-    if isinstance(error, commands.errors.CheckFailure):
-        await react(ctx, False)
+    await react(ctx, False)
+    if isinstance(error, commands.errors.NoPrivateMessage):
+        await ctx.send(error)
+        return
+    elif isinstance(error, commands.errors.CheckFailure):
         await ctx.send("You don't have permissions to do that.")
         print_log("No permission error of User", ctx.message.author, "in Guild", ctx.guild)
         await delete_message(ctx)
