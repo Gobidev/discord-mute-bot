@@ -2,98 +2,20 @@ import discord
 from discord.ext import commands
 import time
 import asyncio
+import pickle
+import os.path
 import psutil
 import SECRETS
 
 PREFIX = "."
-ACTIVITY = discord.Game("I mute U")
 OWNER_ID = SECRETS.OWNER_ID
 TOKEN = SECRETS.TOKEN
-GAME_CHANNEL_NAME = "Crew"
-DEAD_CHANNEL_NAME = "Ghosts"
-MUTE_PERMISSION_ROLE_NAME = "Mute Master"
-BLOCK_SERVER_MUTE = True
-
-# todo being able to change variables for individual guilds
-
-# ------------------- DO NOT CHANGE THESE -------------------
-MUTE_GUILD = {}
-DISABLED = False
-bot = commands.Bot(command_prefix=PREFIX, activity=ACTIVITY)
+LOG_CHAT = True
 
 
-# ------------------- EVENTS -------------------
-@bot.event
-async def on_ready():
-    global MUTE_GUILD
-    print_log('Logged in as {0.user}'.format(bot))
-    for guild in bot.guilds:
-        MUTE_GUILD[guild.id] = False
-    print_log("Guilds:", MUTE_GUILD)
-
-
-@bot.event
-async def on_message(message):
-    if isinstance(message.channel, discord.TextChannel):
-        print_log("{1}: '{0}' (in channel {2} on guild {3})".format(message.content, message.author, message.channel,
-                                                                    message.channel.guild))
-    if message.author == bot.user:
-        if message.content != "" and not message.content.startswith("```"):
-            await asyncio.sleep(4)
-            await message.delete()
-    else:
-        await bot.process_commands(message)
-
-
-@bot.event
-async def on_guild_join(guild):
-    global MUTE_GUILD
-    MUTE_GUILD[guild.id] = False
-
-
-@bot.event
-async def on_command_error(ctx, error):
-    print_log(error)
-    if isinstance(error, commands.errors.CommandNotFound):
-        await react(ctx, False)
-        await ctx.send("Invalid command.")
-        await delete_message(ctx)
-
-
-@bot.event
-async def on_voice_state_update(member, before, after):
-    if DISABLED:
-        return
-
-    if before.channel is not None:
-        guild = before.channel.guild
-    else:
-        guild = after.channel.guild
-
-    mute_server = MUTE_GUILD[guild.id]
-
-    if before.channel is not after.channel:
-        print_log("Voice channel change: {0} from {1} to {2} on Guild {3}".format(
-            member, before.channel, after.channel, guild))
-    else:
-        if not BLOCK_SERVER_MUTE:
-            return
-
-    if after is not None:
-        if str(after.channel) == DEAD_CHANNEL_NAME and member.voice.mute:
-            await member.edit(mute=False)
-            print_log("Un-muted member", member, "in channel", after.channel, "on guild", after.channel.guild)
-        elif str(after.channel) == GAME_CHANNEL_NAME:
-            if mute_server and not member.voice.mute:
-                await member.edit(mute=True)
-                print_log("Muted member", member, "in channel", after.channel, "on guild", after.channel.guild)
-            elif not mute_server and member.voice.mute:
-                await member.edit(mute=False)
-                print_log("Un-muted member", member, "in channel", after.channel, "on guild", after.channel.guild)
-
-
-# ------------------- OTHER FUNCTIONS -------------------
+# ------------------- DO NOT EDIT THIS -------------------
 def print_log(*args, **kwargs):
+    """Print content to file and console along with a timestamp. Has the exact same syntax as print()"""
     t = time.strftime("%Y-%m-%d %T")
     print(t, *args, **kwargs)
     with open('Bot.log', 'a') as file:
@@ -103,14 +25,197 @@ def print_log(*args, **kwargs):
             print_log("Error writing log entry")
 
 
+def load_guilds():
+    """Load configuration of guilds from file with the pickle module"""
+    global guilds
+    if os.path.isfile("guilds.config"):
+        with open("guilds.config", "rb") as config_file:
+            guilds = pickle.load(config_file)
+        print_log("Loaded {0} guild-configs from file".format(len(guilds)))
+
+
+def save_guilds():
+    """Save configuration of guilds to file with the pickle module"""
+    global guilds
+    with open("guilds.config", "wb") as config_file:
+        pickle.dump(guilds, config_file)
+    print_log("Saved config of {0} guilds to file".format(len(guilds)))
+
+
+def get_guild_config(guild_id):
+    """Return a guild configuration for a given guild_id"""
+    global guilds
+    for guild in guilds:
+        if guild.guild_id == guild_id:
+            return guild
+
+
+class Guild:
+    """Class to save the configuration for individual guilds"""
+    def __init__(self, guild):
+        self.name = str(guild)
+        self.guild_id = guild.id
+        self.is_muted = False
+        self.game_channel_name = "Crew"
+        self.dead_channel_name = "Ghosts"
+        self.mute_permissions_role = "Mute Master"
+        self.block_server_mute = False
+
+        print_log("Added guild", self.name)
+
+
+DISABLED = False
+ACTIVITY = None
+guilds = []
+load_guilds()
+
+bot = commands.Bot(command_prefix=PREFIX)
+
+
+# ------------------- EVENTS -------------------
+@bot.event
+async def on_ready():
+    global guilds, ACTIVITY
+    print_log('Logged in as {0.user}'.format(bot))
+
+    """If the amount of guild configs is not equal to the amount of guilds the bot is active on, guild-configs will be
+    generated for them and saved to the file."""
+    if len(guilds) != len(bot.guilds):
+        saved_guild_ids = []
+
+        for guild in guilds:
+            saved_guild_ids.append(guild.guild_id)
+        new_guilds = 0
+
+        for guild in bot.guilds:
+            if guild.id not in saved_guild_ids:
+                guilds.append(Guild(guild))
+                new_guilds += 1
+
+        print_log("Added {0} guilds to config".format(new_guilds))
+        save_guilds()
+
+    unmute_all_guilds()
+    await update_default_activity()
+
+
+@bot.event
+async def on_message(message):
+    """Logging of text messages on guilds if logging is enabled and deleting messages of the bot that are neither an
+    embed nor a mono-font message i.e. used in the help command. This mostly includes error messages."""
+    if isinstance(message.channel, discord.TextChannel):
+        if LOG_CHAT:
+            print_log("{1}: '{0}' (in channel {2} on guild {3})".format(message.content, message.author,
+                                                                        message.channel, message.channel.guild))
+    if message.author == bot.user:
+        if message.content != "" and not message.content.startswith("```"):
+            await asyncio.sleep(5)
+            await message.delete()
+
+    else:
+        await bot.process_commands(message)
+
+
+@bot.event
+async def on_guild_join(guild):
+    """Generating a config for guilds on guild join."""
+    global guilds
+    print_log("Joined guild", guild)
+    guilds.append(Guild(guild))
+    print("Added config for guild", guild)
+    save_guilds()
+
+    await update_default_activity()
+
+
+@bot.event
+async def on_command_error(ctx, error):
+    """Printing all error messages and sending an error when command is not found."""
+    print_log(error)
+    if isinstance(error, commands.errors.CommandNotFound):
+        await react(ctx, False)
+        await ctx.send(error)
+        await delete_message(ctx)
+
+
+@bot.event
+async def on_voice_state_update(member, before, after):
+    """Muting and un-muting members according to what voice channel they are in."""
+    if DISABLED:
+        return
+
+    if after.channel is not None:
+        guild = get_guild_config(after.channel.guild.id)
+    else:
+        guild = get_guild_config(before.channel.guild.id)
+
+    # Only log voice channel updates when the actual channel changed
+    if before.channel is not after.channel:
+        print_log("Voice channel change: {0} from {1} to {2} on Guild {3}".format(
+            member, before.channel, after.channel, guild.name))
+    else:
+        # A voice channel update without a change in channel does not affect the bot unless block_server_mute is enabled
+        # for the server, therefore return if it is not enable
+        if not guild.block_server_mute:
+            return
+
+    # According to what channel the member joined and if server-mute is active, it is either muted or un-muted
+    if str(after.channel) == guild.dead_channel_name and member.voice.mute:
+        # Member is un-muted when joining the dead-channel and was muted before
+        await member.edit(mute=False)
+        print_log("Un-muted member", member, "in channel", after.channel, "on guild", guild.name)
+
+    elif str(after.channel) == guild.game_channel_name:
+        if guild.is_muted and not member.voice.mute:
+            # if the member joins the game channel, mute is active and the member was not muted before, it is muted
+            await member.edit(mute=True)
+            print_log("Muted member", member, "in channel", after.channel, "on guild", guild.name)
+
+        elif not guild.is_muted and member.voice.mute:
+            # if the member joins the game channel, mute is not active and the member was muted before, it is un-muted
+            await member.edit(mute=False)
+            print_log("Un-muted member", member, "in channel", after.channel, "on guild", guild.name)
+
+
+# ------------------- OTHER FUNCTIONS -------------------
 def is_owner():
+    """Check if a user is the bot owner"""
     async def predicate(ctx):
         return ctx.author.id == OWNER_ID
 
     return commands.check(predicate)
 
 
+def has_mute_role():
+    """Check if a user has the role specified in the guild config to use mute and un-mute commands"""
+    async def predicate(ctx):
+
+        guild = get_guild_config(ctx.guild.id)
+        author_roles = ctx.message.author.roles
+
+        author_role_names = []
+        for author_role in author_roles:
+            author_role_names.append(author_role.name)
+
+        if guild.mute_permissions_role not in author_role_names:
+            return False
+        else:
+            return True
+
+    return commands.check(predicate)
+
+
+def unmute_all_guilds():
+    """Set the mute attribute of all guild configs to False, called at bot startup"""
+    global guilds
+    for guild in guilds:
+        guild.is_muted = False
+    print_log("Un-muted all guilds")
+    save_guilds()
+
+
 async def react(ctx, accepted=True):
+    """Reacting to a command message either with thumbs up if it was valid, or a no entry sign if an error occurred"""
     if accepted:
         await ctx.message.add_reaction("\N{THUMBS UP SIGN}")
     else:
@@ -118,9 +223,17 @@ async def react(ctx, accepted=True):
 
 
 async def delete_message(ctx):
+    """Delete a member command after 2 seconds to keep channels clean, skipping when called in DMs."""
     if isinstance(ctx.channel, discord.TextChannel):
         await asyncio.sleep(2)
         await ctx.message.delete()
+
+
+async def update_default_activity():
+    """Update the number of guilds the bot is active on in the bot activity."""
+    global ACTIVITY
+    ACTIVITY = "muting on {0} guilds".format(len(bot.guilds))
+    await bot.change_presence(activity=discord.Game(ACTIVITY))
 
 
 # ------------------- COMMANDS -------------------
@@ -128,6 +241,7 @@ async def delete_message(ctx):
              description="Shows if the bot is active, current ping time, CPU and RAM usage, number of guilds and the"
                          "number of users the bot has.")
 async def status(ctx):
+    """Send an embed containing current information of the bot"""
     await react(ctx)
     embed = discord.Embed(title="Bot Status", color=discord.Color.orange())
     embed.add_field(name="Status", value=":red_circle: Disabled" if DISABLED else ":green_circle: Enabled")
@@ -136,11 +250,14 @@ async def status(ctx):
     embed.add_field(name="RAM", value=":film_frames: " + str(round(psutil.virtual_memory().used * 10 ** -9, 2)) +
                                       "GB/" + str(round(psutil.virtual_memory().total * 10 ** -9, 2)) + "GB")
     embed.add_field(name="Guilds", value=":house: " + str(len(bot.guilds)))
+    # calculate the number of users of the bot
     amount_users = 0
     for guild in bot.guilds:
         for _ in guild.members:
             amount_users += 1
     embed.add_field(name="Users", value=":people_holding_hands: " + str(amount_users))
+    # If bot is not ready, creator will be None
+    await bot.wait_until_ready()
     creator = bot.get_user(480284798028611584)
     embed.set_footer(text="made by {0}".format(creator), icon_url=creator.avatar_url)
     await ctx.send(embed=embed)
@@ -149,84 +266,186 @@ async def status(ctx):
 
 @bot.command(aliases=["m"], brief="Mutes all members in a voice chat",
              description="Mutes all members that are currently connected to the same voice chat you are.")
-@commands.has_role(MUTE_PERMISSION_ROLE_NAME)
+@commands.guild_only()
+@has_mute_role()
 async def mute(ctx):
     if DISABLED:
-        await react(ctx, False)
-        await ctx.send("Bot is disabled.")
-        await delete_message(ctx)
         return
-    global MUTE_GUILD
-    if ctx.message.author.voice and ctx.message.author.voice.channel:
-        print_log("Triggered mute in Guild", ctx.guild)
-        channel = ctx.message.author.voice.channel
-        await react(ctx)
-        MUTE_GUILD[ctx.guild.id] = True
-        for member in channel.members:
-            await member.edit(mute=True)
-        print_log("Muted", str(len(channel.members)), "Members")
-        await delete_message(ctx)
+
+    guild = get_guild_config(ctx.guild.id)
+
+    # Test if member is connected to a voice chat
+    if ctx.message.author.voice:
+
+        # Test if the name of the voice chat equals the game chat of the guild config
+        if str(ctx.message.author.voice.channel) == guild.game_channel_name:
+            print_log("Triggered mute in Guild", ctx.guild)
+            channel = ctx.message.author.voice.channel
+            await react(ctx)
+            guild.is_muted = True
+            for member in channel.members:
+                await member.edit(mute=True)
+            print_log("Muted", str(len(channel.members)), "Members")
+            await delete_message(ctx)
+        else:
+            await react(ctx, False)
+            await ctx.send("Please join a channel named '{0}' to use this command.".format(guild.game_channel_name))
+            await delete_message(ctx)
     else:
         await react(ctx, False)
-        await ctx.send("You need to be connected to a voice chat to use this command.")
+        await ctx.send("Please join a voice chat to use this command.")
         await delete_message(ctx)
 
 
 @bot.command(aliases=["um", "u"], brief="Un-mutes all members in a voice chat",
              description="Un-mutes all members that are currently connected to the same voice chat you are.")
-@commands.has_role(MUTE_PERMISSION_ROLE_NAME)
+@commands.guild_only()
+@has_mute_role()
 async def unmute(ctx):
     if DISABLED:
-        await react(ctx, False)
-        await ctx.send("Bot is disabled.")
-        await delete_message(ctx)
         return
-    global MUTE_GUILD
-    if ctx.message.author.voice and ctx.message.author.voice.channel:
-        print_log("Triggered unmute in Guild", ctx.guild)
-        channel = ctx.message.author.voice.channel
-        await react(ctx)
-        MUTE_GUILD[ctx.guild.id] = False
-        for member in channel.members:
-            await member.edit(mute=False)
-        print_log("Un-muted", str(len(channel.members)), "Members")
-        await delete_message(ctx)
+
+    guild = get_guild_config(ctx.guild.id)
+
+    # Test if member is connected to a voice chat
+    if ctx.message.author.voice:
+
+        # Test if the name of the voice chat equals the game chat of the guild config
+        if str(ctx.message.author.voice.channel) == guild.game_channel_name:
+            print_log("Triggered unmute in Guild", ctx.guild)
+            channel = ctx.message.author.voice.channel
+            await react(ctx)
+            guild.is_muted = False
+            for member in channel.members:
+                await member.edit(mute=False)
+            print_log("Un-muted", str(len(channel.members)), "Members")
+            await delete_message(ctx)
+        else:
+            await react(ctx, False)
+            await ctx.send("Please join a channel named '{0}' to use this command.".format(guild.game_channel_name))
+            await delete_message(ctx)
     else:
         await react(ctx, False)
-        await ctx.send("You need to be connected to a voice chat to use this command.")
+        await ctx.send("Please join a voice chat to use this command.")
         await delete_message(ctx)
 
 
-# ------------------- OWNER COMMANDS -------------------
-@bot.command(aliases=["a"], brief="Changes the activity of the bot",
-             description="Changes the current activity of the bot that is displayed in discord below the bots name.")
-@is_owner()
-async def activity(ctx, *args):
-    global ACTIVITY
+@bot.group(aliases=["cfg", "settings"], brief="Changes the bot config for this guild",
+           description="Command to change settings of the bot for this guild.")
+@commands.guild_only()
+@commands.has_permissions(administrator=True)
+async def config(ctx):
     if DISABLED:
+        return
+
+    if ctx.invoked_subcommand is None:
         await react(ctx, False)
-        await ctx.send("Bot is disabled.")
+        await ctx.send("This command requires at least one argument. Use '{0}help config' for further information"
+                       .format(PREFIX))
         await delete_message(ctx)
         return
-    if len(args) < 1:
+
+
+@config.command(aliases=["mr", "mute-role", "permissions_role"], brief="Change the mute role of this guild",
+                description="Change the role that is required to use the mute and un-mute commands.")
+async def mute_role(ctx, new_role_name: str):
+    """Change the mute role of a guild-config"""
+
+    guild = get_guild_config(ctx.guild.id)
+
+    old_role_name = guild.mute_permissions_role
+    if new_role_name == old_role_name:
         await react(ctx, False)
-        await ctx.send("Invalid usage: {0}activity 'New Activity'".format(PREFIX))
+        await ctx.send("The new role-name has to differ from the old one")
         await delete_message(ctx)
         return
     await react(ctx)
-    new_activity = ""
-    for n in args:
-        new_activity += n + " "
-    ACTIVITY = discord.Game(new_activity)
-    await bot.change_presence(activity=ACTIVITY)
-    print_log("Changed activity to '{0}'".format(new_activity))
+    guild.mute_permissions_role = new_role_name
+    print_log("Changed mute-role of guild ", guild.name, "from", old_role_name, "to", new_role_name)
+    save_guilds()
+    await ctx.send("Changed the mute-role from '{0}' to '{1}'.".format(old_role_name, new_role_name))
+
     await delete_message(ctx)
 
 
+async def change_channel(ctx, new, channel_type):
+    """Change either dead-channel or game-channel of guild config."""
+    guild = get_guild_config(ctx.guild.id)
+
+    if guild.is_muted:
+        await react(ctx, False)
+        await ctx.send("This setting cannot be changed while mute is active.")
+        return
+
+    if channel_type == "game":
+        old = guild.game_channel_name
+        old2 = guild.dead_channel_name
+    else:
+        old = guild.dead_channel_name
+        old2 = guild.game_channel_name
+
+    if new == old:
+        await react(ctx, False)
+        await ctx.send("The new channel name has to differ from the old one.")
+        return
+
+    if new == old2:
+        await react(ctx, False)
+        await ctx.send("The game channel cannot be the same as the dead channel.")
+        return
+
+    await react(ctx)
+    if channel_type == "game":
+        guild.game_channel_name = new
+        print_log("Changed game-channel of guild ", guild.name, "from", old, "to", new)
+        await ctx.send("Changed the game-channel from '{0}' to '{1}'.".format(old, new))
+    else:
+        guild.dead_channel_name = new
+        print_log("Changed dead-channel of guild ", guild.name, "from", old, "to", new)
+        await ctx.send("Changed the dead-channel from '{0}' to '{1}'.".format(old, new))
+
+    save_guilds()
+
+
+@config.command(aliases=["gc", "game-channel", "game"], brief="Change the game-channel of this guild",
+                description="Change the channel name that is affected by the mute and unmute commands.")
+async def game_channel(ctx, new_game_channel: str):
+    await change_channel(ctx, new_game_channel, "game")
+    await delete_message(ctx)
+
+
+@config.command(aliases=["dc", "dead-channel", "dead"], brief="Change the game-channel of this guild",
+                description="Change the channel name that is automatically un-muted on join.")
+async def dead_channel(ctx, new_dead_channel: str):
+    await change_channel(ctx, new_dead_channel, "dead")
+    await delete_message(ctx)
+
+
+@config.command(aliases=["bm", "block", "toggle", "block-mute"], brief="Toggle if server mute suppression is active",
+                description="Set the suppression of server mutes of other users to active or inactive.")
+async def block_mute(ctx):
+    guild = get_guild_config(ctx.guild.id)
+
+    await react(ctx)
+    if guild.block_server_mute:
+        guild.block_server_mute = False
+        await ctx.send("Server mute is no longer blocked")
+        print_log("Server mute is no longer blocked in guild", guild.name)
+    else:
+        guild.block_server_mute = True
+        await ctx.send("Server mute will now be blocked")
+        print_log("Server mute will now be blocked in guild", guild.name)
+
+    save_guilds()
+    await delete_message(ctx)
+
+
+# ------------------- OWNER COMMANDS -------------------
 @bot.command(aliases=["d"], brief="Disables the bot",
-             description="Disables all commands and listeners of the bot except for {0}status.".format(PREFIX))
+             description="Disables all commands and events of the bot except for {0}status.".format(PREFIX))
 @is_owner()
 async def disable(ctx):
+    """Disables all commands and events of the bot."""
     global DISABLED
     if DISABLED:
         await react(ctx, False)
@@ -241,9 +460,10 @@ async def disable(ctx):
 
 
 @bot.command(aliases=["e"], brief="Enables the bot",
-             description="Enables all commands and listeners of the bot.")
+             description="Enables all commands and events of the bot.")
 @is_owner()
 async def enable(ctx):
+    """Enables all commands and events of the bot."""
     global DISABLED
     if not DISABLED:
         await react(ctx, False)
@@ -258,24 +478,48 @@ async def enable(ctx):
 
 
 # ------------------- ERROR HANDLING -------------------
+
 @mute.error
 @unmute.error
 async def mute_error(ctx, error):
+    """Called when an error in mute() or unmute() occurs, send error message to member."""
     await react(ctx, False)
-    await ctx.send(error)
-    print_log("Mute Role error of User", ctx.message.author, "in Guild", ctx.guild)
-    await delete_message(ctx)
+    # Check if command was called in DMs
+    if isinstance(error, commands.errors.NoPrivateMessage):
+        await ctx.send(error)
+        return
+    # Check if member did not have the permissions to use the command
+    elif isinstance(error, commands.errors.CheckFailure):
+        guild = get_guild_config(ctx.guild.id)
+        await ctx.send("You need to have the role '{0}' to use this command.".format(guild.mute_permissions_role))
+        print_log("Mute Role error of User", ctx.message.author, "in Guild", ctx.guild)
+        await delete_message(ctx)
 
 
 @disable.error
 @enable.error
-@activity.error
-async def no_ownership_error(ctx, error):
-    if isinstance(error, commands.errors.CheckFailure):
-        await react(ctx, False)
+@config.error
+async def no_permission_error(ctx, error):
+    """Called when error in any owner-only-command occurs, send error message to member."""
+    await react(ctx, False)
+    # Check if command was used in private messages, which does not work for config()
+    if isinstance(error, commands.errors.NoPrivateMessage):
+        await ctx.send(error)
+        return
+    # Check if member did not have the permissions to use the command
+    elif isinstance(error, commands.errors.CheckFailure):
         await ctx.send("You don't have permissions to do that.")
-        print_log("No ownership error of User", ctx.message.author, "in Guild", ctx.guild)
+        print_log("No permission error of User", ctx.message.author, "in Guild", ctx.guild)
         await delete_message(ctx)
+
+
+@mute_role.error
+async def required_argument_missing_error(ctx, error):
+    """Called when an error occurs in any settings subcommand, send error message to member."""
+    # Check if required argument for command was missing
+    if isinstance(error, commands.errors.MissingRequiredArgument):
+        await react(ctx, False)
+        await ctx.send(error)
 
 
 bot.run(TOKEN)
