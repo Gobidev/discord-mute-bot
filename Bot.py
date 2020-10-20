@@ -258,6 +258,7 @@ async def status(ctx):
     embed.add_field(name="Users", value=":people_holding_hands: " + str(amount_users))
     # If bot is not ready, creator will be None
     await bot.wait_until_ready()
+    # do not change this creator code
     creator = bot.get_user(480284798028611584)
     embed.set_footer(text="made by {0}".format(creator), icon_url=creator.avatar_url)
     await ctx.send(embed=embed)
@@ -283,8 +284,10 @@ async def mute(ctx):
             channel = ctx.message.author.voice.channel
             await react(ctx)
             guild.is_muted = True
-            for member in channel.members:
-                await member.edit(mute=True)
+
+            tasks = [asyncio.create_task(member.edit(mute=True)) for member in channel.members]
+            await asyncio.gather(*tasks)
+
             print_log("Muted", str(len(channel.members)), "Members")
             await delete_message(ctx)
         else:
@@ -316,8 +319,10 @@ async def unmute(ctx):
             channel = ctx.message.author.voice.channel
             await react(ctx)
             guild.is_muted = False
-            for member in channel.members:
-                await member.edit(mute=False)
+
+            tasks = [asyncio.create_task(member.edit(mute=False)) for member in channel.members]
+            await asyncio.gather(*tasks)
+
             print_log("Un-muted", str(len(channel.members)), "Members")
             await delete_message(ctx)
         else:
