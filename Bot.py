@@ -285,10 +285,12 @@ async def mute(ctx):
             await react(ctx)
             guild.is_muted = True
 
+            t1 = time.time()
             tasks = [asyncio.create_task(member.edit(mute=True)) for member in channel.members]
             await asyncio.gather(*tasks)
+            t2 = time.time()
 
-            print_log("Muted", str(len(channel.members)), "Members")
+            print_log("Muted", str(len(channel.members)), "Members. Time:", str(round(t2 - t1, 2)) + "s")
             await delete_message(ctx)
         else:
             await react(ctx, False)
@@ -320,10 +322,12 @@ async def unmute(ctx):
             await react(ctx)
             guild.is_muted = False
 
+            t1 = time.time()
             tasks = [asyncio.create_task(member.edit(mute=False)) for member in channel.members]
             await asyncio.gather(*tasks)
+            t2 = time.time()
 
-            print_log("Un-muted", str(len(channel.members)), "Members")
+            print_log("Un-muted", str(len(channel.members)), "Members. Time:", str(round(t2 - t1, 2)) + "s")
             await delete_message(ctx)
         else:
             await react(ctx, False)
