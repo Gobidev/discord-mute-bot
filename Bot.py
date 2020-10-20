@@ -332,7 +332,6 @@ async def unmute(ctx):
 
 @bot.group(aliases=["cfg", "settings"], brief="Changes the bot config for this guild",
            description="Command to change settings of the bot for this guild.")
-# todo add remaining subcommands
 @commands.guild_only()
 @commands.has_permissions(administrator=True)
 async def config(ctx):
@@ -341,7 +340,8 @@ async def config(ctx):
 
     if ctx.invoked_subcommand is None:
         await react(ctx, False)
-        await ctx.send("This command requires at least one argument.")
+        await ctx.send("This command requires at least one argument. Use '{0}help config' for further information"
+                       .format(PREFIX))
         await delete_message(ctx)
         return
 
