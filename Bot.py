@@ -128,15 +128,14 @@ async def on_guild_join(guild):
     await update_default_activity()
 
 
-# commented for debugging purposes
-# @bot.event
-# async def on_command_error(ctx, error):
-#     """Printing all error messages and sending an error when command is not found."""
-#     print_log(error)
-#     if isinstance(error, commands.errors.CommandNotFound):
-#         await react(ctx, False)
-#         await ctx.send(error)
-#         await delete_message(ctx)
+@bot.event
+async def on_command_error(ctx, error):
+    """Printing all error messages and sending an error when command is not found."""
+    print_log(error)
+    if isinstance(error, commands.errors.CommandNotFound):
+        await react(ctx, False)
+        await ctx.send(error)
+        await delete_message(ctx)
 
 
 @bot.event
@@ -331,8 +330,8 @@ async def unmute(ctx):
         await delete_message(ctx)
 
 
-@bot.group(aliases=["cfg", "settings"], brief="Changes the bot settings for the guild",
-           description="Subcommands to change settings of the bot: mute_role, game_channel, dead_channel, block_mute")
+@bot.group(aliases=["cfg", "settings"], brief="Changes the bot config for this guild",
+           description="Command to change settings of the bot for this guild.")
 # todo add remaining subcommands
 @commands.guild_only()
 @commands.has_permissions(administrator=True)
@@ -340,11 +339,6 @@ async def config(ctx):
     if DISABLED:
         return
 
-    if not isinstance(ctx.channel, discord.TextChannel):
-        await react(ctx, False)
-        await ctx.send("This command does not work in DMs.")
-        await delete_message(ctx)
-        return
     if ctx.invoked_subcommand is None:
         await react(ctx, False)
         await ctx.send("This command requires at least one argument.")
@@ -352,7 +346,8 @@ async def config(ctx):
         return
 
 
-@config.command(brief="Change the mute role of a guild-config")
+@config.command(aliases=["mr", "mute-role", "permissions_role"], brief="Change the mute role of this guild",
+                description="Change the role that is required to use the mute and un-mute commands.")
 async def mute_role(ctx, new_role_name: str):
     """Change the mute role of a guild-config"""
 
@@ -362,6 +357,7 @@ async def mute_role(ctx, new_role_name: str):
     if new_role_name == old_role_name:
         await react(ctx, False)
         await ctx.send("The new role-name has to differ from the old one")
+        await delete_message(ctx)
         return
     await react(ctx)
     guild.mute_permissions_role = new_role_name
@@ -369,6 +365,78 @@ async def mute_role(ctx, new_role_name: str):
     save_guilds()
     await ctx.send("Changed the mute-role from '{0}' to '{1}'.".format(old_role_name, new_role_name))
 
+    await delete_message(ctx)
+
+
+async def change_channel(ctx, new, channel_type):
+    """Change either dead-channel or game-channel of guild config."""
+    guild = get_guild_config(ctx.guild.id)
+
+    if guild.is_muted:
+        await react(ctx, False)
+        await ctx.send("This setting cannot be changed while mute is active.")
+        return
+
+    if channel_type == "game":
+        old = guild.game_channel_name
+        old2 = guild.dead_channel_name
+    else:
+        old = guild.dead_channel_name
+        old2 = guild.game_channel_name
+
+    if new == old:
+        await react(ctx, False)
+        await ctx.send("The new channel name has to differ from the old one.")
+        return
+
+    if new == old2:
+        await react(ctx, False)
+        await ctx.send("The game channel cannot be the same as the dead channel.")
+        return
+
+    await react(ctx)
+    if channel_type == "game":
+        guild.game_channel_name = new
+        print_log("Changed game-channel of guild ", guild.name, "from", old, "to", new)
+        await ctx.send("Changed the game-channel from '{0}' to '{1}'.".format(old, new))
+    else:
+        guild.dead_channel_name = new
+        print_log("Changed dead-channel of guild ", guild.name, "from", old, "to", new)
+        await ctx.send("Changed the dead-channel from '{0}' to '{1}'.".format(old, new))
+
+    save_guilds()
+
+
+@config.command(aliases=["gc", "game-channel", "game"], brief="Change the game-channel of this guild",
+                description="Change the channel name that is affected by the mute and unmute commands.")
+async def game_channel(ctx, new_game_channel: str):
+    await change_channel(ctx, new_game_channel, "game")
+    await delete_message(ctx)
+
+
+@config.command(aliases=["dc", "dead-channel", "dead"], brief="Change the game-channel of this guild",
+                description="Change the channel name that is automatically un-muted on join.")
+async def dead_channel(ctx, new_dead_channel: str):
+    await change_channel(ctx, new_dead_channel, "dead")
+    await delete_message(ctx)
+
+
+@config.command(aliases=["bm", "block", "toggle", "block-mute"], brief="Toggle if server mute suppression is active",
+                description="Set the suppression of server mutes of other users to active or inactive.")
+async def block_mute(ctx):
+    guild = get_guild_config(ctx.guild.id)
+
+    await react(ctx)
+    if guild.block_server_mute:
+        guild.block_server_mute = False
+        await ctx.send("Server mute is no longer blocked")
+        print_log("Server mute is no longer blocked in guild", guild.name)
+    else:
+        guild.block_server_mute = True
+        await ctx.send("Server mute will now be blocked")
+        print_log("Server mute will now be blocked in guild", guild.name)
+
+    save_guilds()
     await delete_message(ctx)
 
 
@@ -395,7 +463,7 @@ async def disable(ctx):
              description="Enables all commands and events of the bot.")
 @is_owner()
 async def enable(ctx):
-    "Enables all commands and events of the bot."
+    """Enables all commands and events of the bot."""
     global DISABLED
     if not DISABLED:
         await react(ctx, False)
