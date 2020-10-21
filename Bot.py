@@ -128,14 +128,14 @@ async def on_guild_join(guild):
     await update_default_activity()
 
 
-@bot.event
-async def on_command_error(ctx, error):
-    """Printing all error messages and sending an error when command is not found."""
-    print_log(error)
-    if isinstance(error, commands.errors.CommandNotFound):
-        await react(ctx, False)
-        await ctx.send(error)
-        await delete_message(ctx)
+# @bot.event
+# async def on_command_error(ctx, error):
+#     """Printing all error messages and sending an error when command is not found."""
+#     print_log(error)
+#     if isinstance(error, commands.errors.CommandNotFound):
+#         await react(ctx, False)
+#         await ctx.send(error)
+#         await delete_message(ctx)
 
 
 @bot.event
@@ -339,6 +339,50 @@ async def unmute(ctx):
         await delete_message(ctx)
 
 
+@bot.command(aliases=["i", "inv"], brief="Sends the invite-url for the bot",
+             description="Send an embed containing an invite-url for the bot to add it to a server.")
+async def invite(ctx):
+    embed = discord.Embed(title="Invite this bot")
+    embed.add_field(name="URL", value=SECRETS.INVITE_URL)
+    # If bot is not ready, creator will be None
+    await bot.wait_until_ready()
+    # do not change this creator code
+    creator = bot.get_user(480284798028611584)
+    embed.set_footer(text="made by {0}".format(creator), icon_url=creator.avatar_url)
+    await ctx.send(embed=embed)
+    await delete_message(ctx)
+
+
+@bot.command()
+async def code(ctx, game_code: str, map_name: str, region: str):
+    maps = {"skeld": "The Skeld", "polus": "Polus", "mira": "Mira HQ"}
+    regions = {"eu": "Europe", "na": "North America", "asia": "Asia"}
+
+    if not len(game_code) == 6:
+        await react(ctx, False)
+        await ctx.send("Please enter a valid game code.")
+        await delete_message(ctx)
+        return
+
+    if map_name not in maps:
+        map_name = list(maps.values())[0]
+
+    if region not in regions:
+        region = list(regions.values())[0]
+
+    await react(ctx)
+
+    embed = discord.Embed(title=game_code, color=0x3700ff)
+    embed.add_field(name="**Map:**", value=maps[map_name])
+    embed.add_field(name="**Region:**", value=regions[region])
+
+    embed.set_footer(text="Game hosted by {0}".format(ctx.message.author), icon_url=ctx.message.author.avatar_url)
+
+    await ctx.send(embed=embed)
+    await ctx.send("```" + game_code + "```")
+    await delete_message(ctx)
+
+
 @bot.group(aliases=["cfg", "settings"], brief="Changes the bot config for this guild",
            description="Command to change settings of the bot for this guild.")
 @commands.guild_only()
@@ -523,12 +567,14 @@ async def no_permission_error(ctx, error):
 
 
 @mute_role.error
+@code.error
 async def required_argument_missing_error(ctx, error):
     """Called when an error occurs in any settings subcommand, send error message to member."""
     # Check if required argument for command was missing
     if isinstance(error, commands.errors.MissingRequiredArgument):
         await react(ctx, False)
         await ctx.send(error)
+        await delete_message(ctx)
 
 
 bot.run(TOKEN)
