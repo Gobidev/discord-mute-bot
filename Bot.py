@@ -60,8 +60,18 @@ class Guild:
         self.dead_channel_name = "Ghosts"
         self.mute_permissions_role = "Mute Master"
         self.block_server_mute = False
+        self.game = None
 
         print_log("Added guild", self.name)
+
+
+class Game:
+    """Class to save settings for running Among Us game"""
+    def __init__(self, game_code, game_map, game_region, host_id):
+        self.game_code = game_code
+        self.game_map = game_map
+        self.game_region = game_region
+        self.host_id = host_id
 
 
 DISABLED = False
@@ -95,7 +105,7 @@ async def on_ready():
         print_log("Added {0} guilds to config".format(new_guilds))
         save_guilds()
 
-    unmute_all_guilds()
+    stop_all_games()
     await update_default_activity()
 
 
@@ -177,6 +187,25 @@ async def on_voice_state_update(member, before, after):
             print_log("Un-muted member", member, "in channel", after.channel, "on guild", guild.name)
 
 
+@bot.event
+async def on_reaction_add(reaction, user):
+    if user == bot.user:
+        return
+    message = reaction.message
+    all_reactions = message.reactions
+
+    valid = False
+
+    for r in all_reactions:
+        if str(r) == "❌":
+            async for u in r.users():
+                if u == bot.user:
+                    valid = True
+
+    if valid:
+        pass
+
+
 # ------------------- OTHER FUNCTIONS -------------------
 def is_owner():
     """Check if a user is the bot owner"""
@@ -205,12 +234,13 @@ def has_mute_role():
     return commands.check(predicate)
 
 
-def unmute_all_guilds():
-    """Set the mute attribute of all guild configs to False, called at bot startup"""
+def stop_all_games():
+    """Set the mute attribute of all guild configs to False and all games to None, called at bot startup"""
     global guilds
     for guild in guilds:
         guild.is_muted = False
-    print_log("Un-muted all guilds")
+        guild.game = None
+    print_log("Stopped all running games")
     save_guilds()
 
 
@@ -356,6 +386,10 @@ async def invite(ctx):
 @bot.command(aliases=["c", "game", "host"], brief="Show an Among Us game code in a nice way",
              description="Send an embed containing the game code, map and region of a hosted Among Us game.")
 async def code(ctx, game_code: str, map_name=None, region=None):
+    if DISABLED:
+        return
+
+    guild = get_guild_config(ctx.guild.id)
 
     # noinspection SpellCheckingInspection
     maps = {"skeld": "The Skeld", "polus": "Polus", "mira": "Mira HQ"}
@@ -378,18 +412,24 @@ async def code(ctx, game_code: str, map_name=None, region=None):
 
     await react(ctx)
 
-    embed = discord.Embed(title=game_code, color=0x3700ff)
-    embed.add_field(name="**Map:**", value=maps[map_name])
-    embed.add_field(name="**Region:**", value=regions[region])
+    map_output = maps[map_name]
+    region_output = regions[region]
+    author = ctx.message.author
 
-    embed.set_footer(text="Game hosted by {0}".format(ctx.message.author), icon_url=ctx.message.author.avatar_url)
+    guild.game = Game(game_code, map_output, region_output, author.id)
+    save_guilds()
+
+    embed = discord.Embed(title=game_code, color=0x3700ff)
+    embed.add_field(name="**Map:**", value=map_output)
+    embed.add_field(name="**Region:**", value=region_output)
+
+    embed.set_footer(text="Game hosted by {0}".format(author), icon_url=author.avatar_url)
 
     await ctx.send(embed=embed)
     # Send game code as pure string in addition to embed to be copyable for mobile users
-    await ctx.send("```" + game_code + "```")
+    code_message = await ctx.send("```" + game_code + "```")
 
-    # todo implement message deletion with reactions
-    # await code_message.add_reaction("❌")
+    await code_message.add_reaction("❌")
 
     await delete_message(ctx)
 
