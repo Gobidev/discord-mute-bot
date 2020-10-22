@@ -128,14 +128,14 @@ async def on_guild_join(guild):
     await update_default_activity()
 
 
-# @bot.event
-# async def on_command_error(ctx, error):
-#     """Printing all error messages and sending an error when command is not found."""
-#     print_log(error)
-#     if isinstance(error, commands.errors.CommandNotFound):
-#         await react(ctx, False)
-#         await ctx.send(error)
-#         await delete_message(ctx)
+@bot.event
+async def on_command_error(ctx, error):
+    """Printing all error messages and sending an error when command is not found."""
+    print_log(error)
+    if isinstance(error, commands.errors.CommandNotFound):
+        await react(ctx, False)
+        await ctx.send(error)
+        await delete_message(ctx)
 
 
 @bot.event
@@ -353,22 +353,28 @@ async def invite(ctx):
     await delete_message(ctx)
 
 
-@bot.command()
-async def code(ctx, game_code: str, map_name: str, region: str):
+@bot.command(aliases=["c", "game", "host"], brief="Show an Among Us game code in a nice way",
+             description="Send an embed containing the game code, map and region of a hosted Among Us game.")
+async def code(ctx, game_code: str, map_name=None, region=None):
+
+    # noinspection SpellCheckingInspection
     maps = {"skeld": "The Skeld", "polus": "Polus", "mira": "Mira HQ"}
     regions = {"eu": "Europe", "na": "North America", "asia": "Asia"}
 
+    # Check if code has the length of 6 (typical Among Us code length)
     if not len(game_code) == 6:
         await react(ctx, False)
         await ctx.send("Please enter a valid game code.")
         await delete_message(ctx)
         return
 
-    if map_name not in maps:
-        map_name = list(maps.values())[0]
+    # Default to first map of list
+    if map_name not in maps or map_name is None:
+        map_name = list(maps.keys())[0]
 
-    if region not in regions:
-        region = list(regions.values())[0]
+    # Default to first region of list
+    if region not in regions or region is None:
+        region = list(regions.keys())[0]
 
     await react(ctx)
 
@@ -379,7 +385,12 @@ async def code(ctx, game_code: str, map_name: str, region: str):
     embed.set_footer(text="Game hosted by {0}".format(ctx.message.author), icon_url=ctx.message.author.avatar_url)
 
     await ctx.send(embed=embed)
+    # Send game code as pure string in addition to embed to be copyable for mobile users
     await ctx.send("```" + game_code + "```")
+
+    # todo implement message deletion with reactions
+    # await code_message.add_reaction("❌")
+
     await delete_message(ctx)
 
 
