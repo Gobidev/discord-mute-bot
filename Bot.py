@@ -60,8 +60,18 @@ class Guild:
         self.dead_channel_name = "Ghosts"
         self.mute_permissions_role = "Mute Master"
         self.block_server_mute = False
+        self.game_codes = []
 
         print_log("Added guild", self.name)
+
+
+class GameCode:
+    """Class to save author of game code messages"""
+    def __init__(self, message1_id, message2_id, channel_id, author_id):
+        self.message1_id = message1_id
+        self.message2_id = message2_id
+        self.channel_id = channel_id
+        self.author_id = author_id
 
 
 DISABLED = False
@@ -95,7 +105,7 @@ async def on_ready():
         print_log("Added {0} guilds to config".format(new_guilds))
         save_guilds()
 
-    unmute_all_guilds()
+    await stop_all_games()
     await update_default_activity()
 
 
@@ -177,6 +187,53 @@ async def on_voice_state_update(member, before, after):
             print_log("Un-muted member", member, "in channel", after.channel, "on guild", guild.name)
 
 
+@bot.event
+async def on_reaction_add(reaction, user):
+
+    # Test if bot reacted to message
+    if user == bot.user:
+        return
+
+    message = reaction.message
+    guild = get_guild_config(message.channel.guild.id)
+    all_reactions = message.reactions
+
+    valid = False
+    is_admin = False
+    is_author = False
+
+    for r in all_reactions:
+        if str(r) == "❌":
+            async for u in r.users():
+                if u == bot.user:
+                    valid = True
+
+    # Test if user is admin
+    if valid and ('administrator', True) in user.permissions_in(message.channel):
+        is_admin = True
+
+    game = None
+    for game_code in guild.game_codes:
+        if game_code.message2_id == message.id:
+            game = game_code
+
+    if game is None:
+        return
+
+    # Test if user is author
+    if game.author_id == user.id:
+        is_author = True
+
+    if is_admin or is_author:
+        message1 = await message.channel.fetch_message(game.message1_id)
+        message2 = await message.channel.fetch_message(game.message2_id)
+        await message1.delete()
+        await message2.delete()
+
+        del guild.game_codes[guild.game_codes.index(game)]
+        save_guilds()
+
+
 # ------------------- OTHER FUNCTIONS -------------------
 def is_owner():
     """Check if a user is the bot owner"""
@@ -205,12 +262,32 @@ def has_mute_role():
     return commands.check(predicate)
 
 
-def unmute_all_guilds():
-    """Set the mute attribute of all guild configs to False, called at bot startup"""
+async def stop_all_games():
+    """Set the mute attribute of all guild configs to False and all games to None, called at bot startup"""
     global guilds
     for guild in guilds:
+
         guild.is_muted = False
-    print_log("Un-muted all guilds")
+
+        if guild.game_codes:
+            print_log("Delete old game code messages")
+
+            for game_code in guild.game_codes:
+
+                channel = await bot.fetch_channel(game_code.channel_id)
+
+                try:
+                    message1 = await channel.fetch_message(game_code.message1_id)
+                    message2 = await channel.fetch_message(game_code.message2_id)
+                    await message1.delete()
+                    await message2.delete()
+
+                except discord.errors.NotFound:
+                    pass
+
+            guild.game_codes = []
+
+    print_log("Stopped all running games")
     save_guilds()
 
 
@@ -222,11 +299,11 @@ async def react(ctx, accepted=True):
         await ctx.message.add_reaction("\N{NO ENTRY}")
 
 
+@commands.guild_only()
 async def delete_message(ctx):
-    """Delete a member command after 2 seconds to keep channels clean, skipping when called in DMs."""
-    if isinstance(ctx.channel, discord.TextChannel):
-        await asyncio.sleep(2)
-        await ctx.message.delete()
+    """Delete a member command after 1 second to keep channels clean, skipping when called in DMs."""
+    await asyncio.sleep(1)
+    await ctx.message.delete()
 
 
 async def update_default_activity():
@@ -356,6 +433,10 @@ async def invite(ctx):
 @bot.command(aliases=["c", "game", "host"], brief="Show an Among Us game code in a nice way",
              description="Send an embed containing the game code, map and region of a hosted Among Us game.")
 async def code(ctx, game_code: str, map_name=None, region=None):
+    if DISABLED:
+        return
+
+    guild = get_guild_config(ctx.guild.id)
 
     # noinspection SpellCheckingInspection
     maps = {"skeld": "The Skeld", "polus": "Polus", "mira": "Mira HQ"}
@@ -378,18 +459,24 @@ async def code(ctx, game_code: str, map_name=None, region=None):
 
     await react(ctx)
 
+    map_output = maps[map_name]
+    region_output = regions[region]
+    author = ctx.message.author
+
     embed = discord.Embed(title=game_code, color=0x3700ff)
-    embed.add_field(name="**Map:**", value=maps[map_name])
-    embed.add_field(name="**Region:**", value=regions[region])
+    embed.add_field(name="**Map:**", value=map_output)
+    embed.add_field(name="**Region:**", value=region_output)
 
-    embed.set_footer(text="Game hosted by {0}".format(ctx.message.author), icon_url=ctx.message.author.avatar_url)
+    embed.set_footer(text="Game hosted by {0}".format(author), icon_url=author.avatar_url)
 
-    await ctx.send(embed=embed)
+    embed_message = await ctx.send(embed=embed)
     # Send game code as pure string in addition to embed to be copyable for mobile users
-    await ctx.send("```" + game_code + "```")
+    code_message = await ctx.send("```" + game_code + "```")
 
-    # todo implement message deletion with reactions
-    # await code_message.add_reaction("❌")
+    await code_message.add_reaction("❌")
+
+    guild.game_codes.append(GameCode(embed_message.id, code_message.id, ctx.channel.id, author.id))
+    save_guilds()
 
     await delete_message(ctx)
 
@@ -527,6 +614,7 @@ async def disable(ctx):
              description="Enables all commands and events of the bot.")
 @is_owner()
 async def enable(ctx):
+    # todo fix exception when executing command
     """Enables all commands and events of the bot."""
     global DISABLED
     if not DISABLED:
