@@ -449,6 +449,8 @@ async def code(ctx, game_code: str, map_name=None, region=None):
         await delete_message(ctx)
         return
 
+    game_code = game_code.upper()
+
     # Default to first map of list
     if map_name not in maps or map_name is None:
         map_name = list(maps.keys())[0]
