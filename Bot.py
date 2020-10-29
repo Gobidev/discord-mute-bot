@@ -75,7 +75,6 @@ class GameCode:
 
 
 DISABLED = False
-ACTIVITY = None
 guilds = []
 load_guilds()
 
@@ -85,7 +84,7 @@ bot = commands.Bot(command_prefix=PREFIX)
 # ------------------- EVENTS -------------------
 @bot.event
 async def on_ready():
-    global guilds, ACTIVITY
+    global guilds
     print_log('Logged in as {0.user}'.format(bot))
 
     """If the amount of guild configs is not equal to the amount of guilds the bot is active on, guild-configs will be
@@ -308,9 +307,8 @@ async def delete_message(ctx):
 
 async def update_default_activity():
     """Update the number of guilds the bot is active on in the bot activity."""
-    global ACTIVITY
-    ACTIVITY = "muting on {0} guilds".format(len(bot.guilds))
-    await bot.change_presence(activity=discord.Game(ACTIVITY))
+    activity = "muting on {0} guilds".format(len(bot.guilds))
+    await bot.change_presence(activity=discord.Game(activity))
 
 
 # ------------------- COMMANDS -------------------
@@ -616,7 +614,6 @@ async def disable(ctx):
              description="Enables all commands and events of the bot.")
 @is_owner()
 async def enable(ctx):
-    # todo fix exception when executing command
     """Enables all commands and events of the bot."""
     global DISABLED
     if not DISABLED:
@@ -627,7 +624,7 @@ async def enable(ctx):
     await react(ctx)
     DISABLED = False
     print_log("Bot is now enabled")
-    await bot.change_presence(activity=ACTIVITY)
+    await update_default_activity()
     await delete_message(ctx)
 
 
