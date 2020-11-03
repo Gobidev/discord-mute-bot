@@ -61,6 +61,7 @@ class Guild:
         self.mute_permissions_role = "Mute Master"
         self.block_server_mute = False
         self.game_codes = []
+        self.game_code_channel_id = None
 
         print_log("Added guild", self.name)
 
@@ -112,10 +113,16 @@ async def on_ready():
 async def on_message(message):
     """Logging of text messages on guilds if logging is enabled and deleting messages of the bot that are neither an
     embed nor a mono-font message i.e. used in the help command. This mostly includes error messages."""
+
+    guild = get_guild_config(message.channel.guild.id)
+
     if isinstance(message.channel, discord.TextChannel):
         if LOG_CHAT:
             print_log("{1}: '{0}' (in channel {2} on guild {3})".format(message.content, message.author,
                                                                         message.channel, message.channel.guild))
+        if guild.game_code_channel_id is not None:
+            if guild.game_code_channel_id == message.channel.id and len(message.content) == 6:
+                await code(await bot.get_context(message), message.content)
     if message.author == bot.user:
         if message.content != "" and not message.content.startswith("```"):
             await asyncio.sleep(5)
@@ -449,18 +456,18 @@ async def code(ctx, game_code: str, map_name=None, region=None):
 
     game_code = game_code.upper()
 
-    # Default to first map of list
     if map_name not in maps or map_name is None:
-        map_name = list(maps.keys())[0]
+        map_output = "?"
+    else:
+        map_output = maps[map_name]
 
-    # Default to first region of list
     if region not in regions or region is None:
-        region = list(regions.keys())[0]
+        region_output = "?"
+    else:
+        region_output = regions[region]
 
     await react(ctx)
 
-    map_output = maps[map_name]
-    region_output = regions[region]
     author = ctx.message.author
 
     embed = discord.Embed(title=game_code, color=0x3700ff)
@@ -587,6 +594,19 @@ async def block_mute(ctx):
         await ctx.send("Server mute will now be blocked")
         print_log("Server mute will now be blocked in guild", guild.name)
 
+    save_guilds()
+    await delete_message(ctx)
+
+
+@config.command(aliases=["cc", "code-channel", "codes", "set-code-channel"],
+                brief="Set a channel to be used for Among Us game codes",
+                description="Specify a text channel for this guild in which sent game codes will be converted to"
+                            "embeds.")
+async def set_code_channel(ctx):
+    guild = get_guild_config(ctx.guild.id)
+
+    await react(ctx)
+    guild.game_code_channel_id = ctx.channel.id
     save_guilds()
     await delete_message(ctx)
 
