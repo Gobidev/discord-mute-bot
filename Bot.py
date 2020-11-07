@@ -126,7 +126,7 @@ async def on_message(message):
                 await code(await bot.get_context(message), message.content)
     if message.author == bot.user:
         if message.content != "" and not message.content.startswith("```"):
-            await asyncio.sleep(5)
+            await asyncio.sleep(8)
             try:
                 await message.delete()
             except discord.errors.Forbidden:
@@ -140,8 +140,14 @@ async def on_guild_join(guild):
     """Generating a config for guilds on guild join."""
     global guilds
     print_log("Joined guild", guild)
+
+    # test if guild is already in config
+    for guild_ in guilds:
+        if guild_.id == guild.id:
+            print_log("Skip adding already existing guild")
+            return
     guilds.append(Guild(guild))
-    print("Added config for guild", guild)
+    print_log("Added config for guild", guild)
     save_guilds()
 
     await update_default_activity()
@@ -365,7 +371,7 @@ async def status(ctx):
     # If bot is not ready, creator will be None
     await bot.wait_until_ready()
     # do not change this creator code
-    creator = bot.get_user(480284798028611584)
+    creator = await bot.fetch_user(480284798028611584)
     embed.set_footer(text="made by {0}".format(creator), icon_url=creator.avatar_url)
     await ctx.send(embed=embed)
     await delete_message(ctx)
@@ -377,6 +383,13 @@ async def status(ctx):
 @has_mute_role()
 async def mute(ctx):
     if DISABLED:
+        return
+
+    if ('mute_members', True) not in bot.user.permissions_in(ctx.channel):
+        await react(ctx, False)
+        await ctx.send("The Bot does not the permission to mute members. Please add the permission to use this"
+                       "command.")
+        await delete_message(ctx)
         return
 
     guild = get_guild_config(ctx.guild.id)
@@ -414,6 +427,13 @@ async def mute(ctx):
 @has_mute_role()
 async def unmute(ctx):
     if DISABLED:
+        return
+
+    if ('mute_members', True) not in bot.user.permissions_in(ctx.channel):
+        await react(ctx, False)
+        await ctx.send("The Bot does not the permission to mute members. Please add the permission to use this"
+                       "command.")
+        await delete_message(ctx)
         return
 
     guild = get_guild_config(ctx.guild.id)
@@ -455,7 +475,7 @@ async def invite(ctx):
     # If bot is not ready, creator will be None
     await bot.wait_until_ready()
     # do not change this creator code
-    creator = bot.get_user(480284798028611584)
+    creator = await bot.fetch_user(480284798028611584)
     embed.set_footer(text="made by {0}".format(creator), icon_url=creator.avatar_url)
     await ctx.send(embed=embed)
     await delete_message(ctx)
