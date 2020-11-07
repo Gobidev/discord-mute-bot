@@ -10,7 +10,7 @@ import SECRETS
 PREFIX = "."
 OWNER_ID = SECRETS.OWNER_ID
 TOKEN = SECRETS.TOKEN
-LOG_CHAT = False
+LOGGING = False
 
 
 # ------------------- DO NOT EDIT THIS -------------------
@@ -117,7 +117,7 @@ async def on_message(message):
     guild = get_guild_config(message.channel.guild.id)
 
     if isinstance(message.channel, discord.TextChannel):
-        if LOG_CHAT:
+        if LOGGING:
             print_log("{1}: '{0}' (in channel {2} on guild {3})".format(message.content, message.author,
                                                                         message.channel, message.channel.guild))
         if guild.game_code_channel_id is not None:
@@ -167,8 +167,9 @@ async def on_voice_state_update(member, before, after):
 
     # Only log voice channel updates when the actual channel changed
     if before.channel is not after.channel:
-        print_log("Voice channel change: {0} from {1} to {2} on Guild {3}".format(
-            member, before.channel, after.channel, guild.name))
+        if LOGGING:
+            print_log("Voice channel change: {0} from {1} to {2} on Guild {3}".format(
+                member, before.channel, after.channel, guild.name))
     else:
         # A voice channel update without a change in channel does not affect the bot unless block_server_mute is enabled
         # for the server, therefore return if it is not enable
