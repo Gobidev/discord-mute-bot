@@ -425,7 +425,9 @@ async def unmute(ctx):
              description="Send an embed containing an invite-url for the bot to add it to a server.")
 async def invite(ctx):
     embed = discord.Embed(title="Invite this bot")
-    embed.add_field(name="URL", value=SECRETS.INVITE_URL)
+    embed.add_field(name="URL",
+                    value="Click [here](https://discord.com/api/oauth2/authorize?client_id=764824685581565963"
+                          "&permissions=8&scope=bot)")
     # If bot is not ready, creator will be None
     await bot.wait_until_ready()
     # do not change this creator code
