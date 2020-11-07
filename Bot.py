@@ -150,8 +150,6 @@ async def on_command_error(ctx, error):
     print_log(error)
     if isinstance(error, commands.errors.CommandNotFound):
         await react(ctx, False)
-        await ctx.send(error)
-        await delete_message(ctx)
 
 
 @bot.event
