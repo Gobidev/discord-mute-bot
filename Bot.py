@@ -114,9 +114,9 @@ async def on_message(message):
     """Logging of text messages on guilds if logging is enabled and deleting messages of the bot that are neither an
     embed nor a mono-font message i.e. used in the help command. This mostly includes error messages."""
 
-    guild = get_guild_config(message.channel.guild.id)
-
     if isinstance(message.channel, discord.TextChannel):
+        guild = get_guild_config(message.channel.guild.id)
+
         if LOGGING:
             print_log("{1}: '{0}' (in channel {2} on guild {3})".format(message.content, message.author,
                                                                         message.channel, message.channel.guild))
@@ -141,6 +141,13 @@ async def on_guild_join(guild):
     print("Added config for guild", guild)
     save_guilds()
 
+    await update_default_activity()
+
+
+@bot.event
+async def on_guild_remove(guild):
+    """Update the activity when leaving a guild"""
+    print_log("Left guild", guild)
     await update_default_activity()
 
 
