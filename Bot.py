@@ -150,6 +150,9 @@ async def on_command_error(ctx, error):
     print_log(error)
     if isinstance(error, commands.errors.CommandNotFound):
         await react(ctx, False)
+        if ctx.message.startswith(".["):
+            ctx.send("Please use only one of the command options. Example: If the command is .[mute|m], you can either"
+                     "use .mute or .m to use the command.")
 
 
 @bot.event
