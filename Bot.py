@@ -385,13 +385,6 @@ async def mute(ctx):
     if DISABLED:
         return
 
-    if ('mute_members', True) not in bot.user.permissions_in(ctx.channel):
-        await react(ctx, False)
-        await ctx.send("The Bot does not the permission to mute members. Please add the permission to use this"
-                       "command.")
-        await delete_message(ctx)
-        return
-
     guild = get_guild_config(ctx.guild.id)
 
     # Test if member is connected to a voice chat
@@ -427,13 +420,6 @@ async def mute(ctx):
 @has_mute_role()
 async def unmute(ctx):
     if DISABLED:
-        return
-
-    if ('mute_members', True) not in bot.user.permissions_in(ctx.channel):
-        await react(ctx, False)
-        await ctx.send("The Bot does not the permission to mute members. Please add the permission to use this"
-                       "command.")
-        await delete_message(ctx)
         return
 
     guild = get_guild_config(ctx.guild.id)
