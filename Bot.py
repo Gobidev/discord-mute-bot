@@ -93,8 +93,8 @@ async def on_ready():
 
     for guild in guilds:
         saved_guild_ids.append(guild.guild_id)
-    new_guilds = 0
 
+    new_guilds = 0
     for guild in bot.guilds:
         if guild.id not in saved_guild_ids:
             guilds.append(Guild(guild))
@@ -141,11 +141,6 @@ async def on_guild_join(guild):
     global guilds
     print_log("Joined guild", guild)
 
-    # test if guild is already in config
-    for guild_ in guilds:
-        if guild_.id == guild.id:
-            print_log("Skip adding already existing guild")
-            return
     guilds.append(Guild(guild))
     print_log("Added config for guild", guild)
     save_guilds()
