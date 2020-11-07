@@ -485,10 +485,10 @@ async def code(ctx, game_code: str, map_name=None, region=None):
 
     await code_message.add_reaction("❌")
 
+    print_log("Create game in guild", guild.name, "({0}, {1}, {2})".format(game_code, map_output, region_output))
+
     guild.game_codes.append(GameCode(embed_message.id, code_message.id, ctx.channel.id, author.id))
     save_guilds()
-
-    print_log("Create game in guild", guild.name, "({0}, {1}, {2})".format(game_code, map_output, region_output))
 
     await delete_message(ctx)
 
