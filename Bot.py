@@ -265,6 +265,10 @@ def has_mute_role():
     """Check if a user has the role specified in the guild config to use mute and un-mute commands"""
     async def predicate(ctx):
 
+        # Test if user is admin
+        if ('administrator', True) in ctx.message.author.permissions_in(ctx.channel):
+            return True
+
         guild = get_guild_config(ctx.guild.id)
         author_roles = ctx.message.author.roles
 
