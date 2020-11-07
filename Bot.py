@@ -10,7 +10,7 @@ import SECRETS
 PREFIX = "."
 OWNER_ID = SECRETS.OWNER_ID
 TOKEN = SECRETS.TOKEN
-LOG_CHAT = True
+LOG_CHAT = False
 
 
 # ------------------- DO NOT EDIT THIS -------------------
