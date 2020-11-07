@@ -295,8 +295,10 @@ async def stop_all_games():
             print_log("Delete old game code messages")
 
             for game_code in guild.game_codes:
-
-                channel = await bot.fetch_channel(game_code.channel_id)
+                try:
+                    channel = await bot.fetch_channel(game_code.channel_id)
+                except discord.errors.Forbidden:
+                    return 
 
                 try:
                     message1 = await channel.fetch_message(game_code.message1_id)
