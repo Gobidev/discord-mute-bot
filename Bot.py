@@ -88,22 +88,20 @@ async def on_ready():
     global guilds
     print_log('Logged in as {0.user}'.format(bot))
 
-    """If the amount of guild configs is not equal to the amount of guilds the bot is active on, guild-configs will be
-    generated for them and saved to the file."""
-    if len(guilds) != len(bot.guilds):
-        saved_guild_ids = []
+    """Generate guild configs for new guilds"""
+    saved_guild_ids = []
 
-        for guild in guilds:
-            saved_guild_ids.append(guild.guild_id)
-        new_guilds = 0
+    for guild in guilds:
+        saved_guild_ids.append(guild.guild_id)
+    new_guilds = 0
 
-        for guild in bot.guilds:
-            if guild.id not in saved_guild_ids:
-                guilds.append(Guild(guild))
-                new_guilds += 1
+    for guild in bot.guilds:
+        if guild.id not in saved_guild_ids:
+            guilds.append(Guild(guild))
+            new_guilds += 1
 
-        print_log("Added {0} guilds to config".format(new_guilds))
-        save_guilds()
+    print_log("Added {0} guilds to config".format(new_guilds))
+    save_guilds()
 
     await stop_all_games()
     await update_default_activity()
@@ -120,14 +118,19 @@ async def on_message(message):
         if LOGGING:
             print_log("{1}: '{0}' (in channel {2} on guild {3})".format(message.content, message.author,
                                                                         message.channel, message.channel.guild))
+        if message.content.startswith(PREFIX):
+            print_log("{1}: '{0}' (in channel {2} on guild {3})".format(message.content, message.author,
+                                                                        message.channel, message.channel.guild))
         if guild.game_code_channel_id is not None:
             if guild.game_code_channel_id == message.channel.id and len(message.content) == 6:
                 await code(await bot.get_context(message), message.content)
     if message.author == bot.user:
         if message.content != "" and not message.content.startswith("```"):
             await asyncio.sleep(5)
-            await message.delete()
-
+            try:
+                await message.delete()
+            except discord.errors.Forbidden:
+                pass
     else:
         await bot.process_commands(message)
 
@@ -308,17 +311,23 @@ async def stop_all_games():
 
 async def react(ctx, accepted=True):
     """Reacting to a command message either with thumbs up if it was valid, or a no entry sign if an error occurred"""
-    if accepted:
-        await ctx.message.add_reaction("\N{THUMBS UP SIGN}")
-    else:
-        await ctx.message.add_reaction("\N{NO ENTRY}")
+    try:
+        if accepted:
+            await ctx.message.add_reaction("\N{THUMBS UP SIGN}")
+        else:
+            await ctx.message.add_reaction("\N{NO ENTRY}")
+    except discord.errors.Forbidden:
+        pass
 
 
 @commands.guild_only()
 async def delete_message(ctx):
     """Delete a member command after 1 second to keep channels clean, skipping when called in DMs."""
     await asyncio.sleep(1)
-    await ctx.message.delete()
+    try:
+        await ctx.message.delete()
+    except discord.errors.Forbidden:
+        pass
 
 
 async def update_default_activity():
