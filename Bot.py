@@ -189,7 +189,7 @@ async def on_voice_state_update(member, before, after):
             return
 
     # According to what channel the member joined and if server-mute is active, it is either muted or un-muted
-    if str(after.channel) == guild.dead_channel_name and member.voice.mute:
+    if str(after.channel) != guild.game_channel_name and member.voice.mute:
         # Member is un-muted when joining the dead-channel and was muted before
         await member.edit(mute=False)
         print_log("Un-muted member", member, "in channel", after.channel, "on guild", guild.name)
@@ -199,11 +199,6 @@ async def on_voice_state_update(member, before, after):
             # if the member joins the game channel, mute is active and the member was not muted before, it is muted
             await member.edit(mute=True)
             print_log("Muted member", member, "in channel", after.channel, "on guild", guild.name)
-
-        elif not guild.is_muted and member.voice.mute:
-            # if the member joins the game channel, mute is not active and the member was muted before, it is un-muted
-            await member.edit(mute=False)
-            print_log("Un-muted member", member, "in channel", after.channel, "on guild", guild.name)
 
 
 @bot.event
