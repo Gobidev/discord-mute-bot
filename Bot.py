@@ -189,8 +189,8 @@ async def on_voice_state_update(member, before, after):
             return
 
     # According to what channel the member joined and if server-mute is active, it is either muted or un-muted
-    if member.voice is not None:
-        if str(after.channel) != guild.game_channel_name and member.voice.mute:
+    if str(after.channel) != guild.game_channel_name and after.channel is not None:
+        if member.voice.mute:
             # Member is un-muted when joining the dead-channel and was muted before
             await member.edit(mute=False)
             print_log("Un-muted member", member, "in channel", after.channel, "on guild", guild.name)
