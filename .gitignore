@@ -1,5 +1,6 @@
 .idea
 SECRETS.py
 *.pyc
-Bot.log
+*.log
+*.log.*
 guilds.config
