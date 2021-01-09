@@ -3,4 +3,5 @@ SECRETS.py
 *.pyc
 *.log
 *.log.*
+*.csv
 guilds.config
