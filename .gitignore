@@ -1,6 +1,6 @@
 .idea
 SECRETS.py
 *.pyc
-*.log
-*.log.*
+logs/*
+*.csv
 guilds.config
