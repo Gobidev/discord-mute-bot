@@ -14,11 +14,16 @@ LOGGING = False
 
 
 # ------------------- DO NOT EDIT THIS -------------------
+
+if not os.path.isdir("logs"):
+    os.mkdir("logs")
+
+
 def print_log(*args, **kwargs):
     """Print content to file and console along with a timestamp. Has the exact same syntax as print()"""
     t = time.strftime("%Y-%m-%d %T")
     print(t, *args, **kwargs)
-    with open('Bot.log', 'a') as file:
+    with open(os.path.join("logs", 'Bot.log'), 'a', encoding='utf8') as file:
         try:
             print(t, *args, **kwargs, file=file)
         except UnicodeEncodeError:
