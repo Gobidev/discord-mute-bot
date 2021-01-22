@@ -15,7 +15,6 @@ def combine_logs():
         first_line_time = get_time_info(read_log(log_file)[0])
         files_with_times[log_file] = first_line_time
     filenames_sorted = [k for k, v in sorted(files_with_times.items(), key=lambda item: item[1])]
-    print(filenames_sorted)
 
     with open(os.path.join("logs", "all_logs.log"), "w", encoding='utf8') as f:
         for file_name in filenames_sorted:
@@ -73,10 +72,6 @@ def print_time_stamps_to_csv(log: list, filename: str):
 
 
 if __name__ == '__main__':
-    combine_logs()
-
-
-if __name__ == '__maain__':
     if not os.path.isdir("logs"):
         print("No logs found")
         exit()
