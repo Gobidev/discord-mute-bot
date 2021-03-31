@@ -472,7 +472,7 @@ async def code(ctx, game_code: str, map_name=None, region=None):
     guild = get_guild_config(ctx.guild.id)
 
     # noinspection SpellCheckingInspection
-    maps = {"skeld": "The Skeld", "polus": "Polus", "mira": "Mira HQ"}
+    maps = {"skeld": "The Skeld", "polus": "Polus", "mira": "Mira HQ", "airship": "Airship"}
     regions = {"eu": "Europe", "na": "North America", "asia": "Asia"}
 
     # Check if code has the length of 6 (typical Among Us code length)
