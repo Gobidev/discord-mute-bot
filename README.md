@@ -29,7 +29,7 @@ OWNER_ID=987654321
 - **.[help] (command)** for help.
 - **.[config|cfg|settings]** (Admins only) to change bot configuration for the guild. Settings include changing the role to mute, the channel names of the game and ghosts channel and wether server mute is suppressed or not.
 - **.[invite|i|inv]** to get the invite code to add this bot to a guild.
-- **.[code|c|game|host] (skeld|mira|polus) (eu|na|asia)** to show a game code in a nice embed. You can use .config code-channel to only allow a certain channel for codes to be sent.
+- **.[code|c|game|host] (skeld|mira|polus|airship) (eu|na|asia)** to show a game code in a nice embed. You can use .config code-channel to only allow a certain channel for codes to be sent.
 
 
 ### It also does the following in the background:
