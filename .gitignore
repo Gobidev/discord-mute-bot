@@ -4,3 +4,4 @@ SECRETS.py
 logs/*
 *.csv
 guilds.config
+parser_output
