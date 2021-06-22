@@ -57,6 +57,62 @@ def get_mute_times(log: list) -> list:
     return events
 
 
+def get_relative_mutes(log: list) -> list:
+    events = []
+    mute_count = 0
+    for entry in log:
+        if "Muted" in entry[1]:
+            entry_words = entry[1].split(" ")
+            try:
+                amount = int(entry_words[1])
+                mute_count += amount
+                events.append((entry[0], mute_count))
+            except ValueError:
+                mute_count += 1
+                events.append((entry[0], mute_count))
+        elif "Un-muted" in entry[1]:
+            entry_words = entry[1].split(" ")
+            try:
+                amount = int(entry_words[1])
+                mute_count -= amount
+                if mute_count < 0:
+                    mute_count = 0
+                events.append((entry[0], mute_count))
+            except ValueError:
+                mute_count -= 1
+                if mute_count < 0:
+                    mute_count = 0
+                events.append((entry[0], mute_count))
+    return events
+
+
+def get_daily_mutes(log: list) -> list:
+    events = []
+    daily_mutes = 0
+    day_before = None
+    for entry in log:
+
+        day = entry[0].split(" ")[0]
+        if not day.startswith("20"):
+            continue
+
+        if day != day_before:
+            events.append((day, daily_mutes))
+            daily_mutes = 0
+
+        if "Muted" in entry[1]:
+            entry_words = entry[1].split(" ")
+            try:
+                amount = int(entry_words[1])
+                daily_mutes += amount
+            except ValueError:
+                daily_mutes += 1
+
+        day_before = day
+
+    return events
+
+
 def get_time_info(entry_: tuple) -> float:
     timestamp = entry_[0]
     d, t = timestamp.split(" ")
@@ -76,10 +132,14 @@ if __name__ == '__main__':
         print("No logs found")
         exit()
     if not os.path.isdir("parser_output"):
-        os.mkdir("parser_output")
+        os.makedirs("parser_output")
 
     combine_logs()
     print_time_stamps_to_csv(get_join_and_leave_times(read_log(os.path.join("logs", "all_logs.log"))),
                              os.path.join("parser_output", "guild_count.csv"))
     print_time_stamps_to_csv(get_mute_times(read_log(os.path.join("logs", "all_logs.log"))),
                              os.path.join("parser_output", "mute_count.csv"))
+    print_time_stamps_to_csv(get_daily_mutes(read_log(os.path.join("logs", "all_logs.log"))),
+                             os.path.join("parser_output", "daily_mute_count.csv"))
+    print_time_stamps_to_csv(get_relative_mutes(read_log(os.path.join("logs", "all_logs.log"))),
+                             os.path.join("parser_output", "relative_mute_count.csv"))
